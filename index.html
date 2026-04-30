@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Beginvest – Beginner Portfolio Builder</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --emerald:#10b981; --emerald-d:#059669; --teal:#0d9488;
+  --navy:#0b1220; --sky:#38bdf8; --amber:#f59e0b; --rose:#f43f5e;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;}
+body{font-family:'DM Sans',sans-serif;background:#0b1220;color:#e2e8f0;min-height:100vh;
+  background-image:radial-gradient(ellipse 70% 40% at 15% 0%,rgba(16,185,129,.13) 0%,transparent 60%),
+  radial-gradient(ellipse 50% 35% at 85% 100%,rgba(56,189,248,.08) 0%,transparent 55%);}
+
+/* Glass panels */
+.glass{background:rgba(22,35,55,.82);backdrop-filter:blur(14px);border:1px solid rgba(148,163,184,.11);border-radius:16px;}
+.glass-light{background:rgba(30,45,70,.6);border:1px solid rgba(148,163,184,.1);border-radius:11px;}
+
+/* Stepper */
+.step-line{flex:1;height:2px;background:rgba(148,163,184,.15);transition:background .5s;margin-bottom:22px;}
+.step-line.done{background:var(--emerald);}
+
+/* Buttons */
+.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  background:linear-gradient(135deg,#059669 0%,#0d9488 100%);color:#fff;font-weight:600;
+  font-family:'DM Sans',sans-serif;font-size:15px;border-radius:10px;padding:13px 30px;border:none;cursor:pointer;
+  box-shadow:0 4px 18px rgba(5,150,105,.35);transition:opacity .2s,transform .15s,box-shadow .2s;}
+.btn-primary:hover:not(:disabled){opacity:.9;transform:translateY(-1px);box-shadow:0 7px 24px rgba(5,150,105,.45);}
+.btn-primary:disabled{opacity:.38;cursor:not-allowed;transform:none;}
+
+.btn-sec{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  background:rgba(148,163,184,.09);color:#94a3b8;font-weight:500;font-family:'DM Sans',sans-serif;font-size:14px;
+  border-radius:10px;padding:12px 22px;border:1px solid rgba(148,163,184,.18);cursor:pointer;transition:background .2s,color .2s;}
+.btn-sec:hover{background:rgba(148,163,184,.16);color:#e2e8f0;}
+
+.btn-ghost{display:inline-flex;align-items:center;gap:5px;background:transparent;color:#38bdf8;font-weight:500;
+  font-family:'DM Sans',sans-serif;font-size:13px;border-radius:8px;padding:7px 14px;
+  border:1px solid rgba(56,189,248,.28);cursor:pointer;transition:background .2s;}
+.btn-ghost:hover{background:rgba(56,189,248,.07);}
+.btn-ghost.danger{color:#fb7185;border-color:rgba(244,63,94,.28);}
+.btn-ghost.danger:hover{background:rgba(244,63,94,.07);}
+.btn-ghost.success{color:#34d399;border-color:rgba(16,185,129,.28);}
+.btn-ghost.success:hover{background:rgba(16,185,129,.07);}
+
+/* Inputs */
+.finput{background:rgba(11,18,32,.7);border:1px solid rgba(148,163,184,.18);border-radius:10px;color:#e2e8f0;
+  font-family:'DM Sans',sans-serif;font-size:15px;padding:12px 16px;width:100%;outline:none;
+  transition:border-color .2s,box-shadow .2s;}
+.finput:focus{border-color:var(--emerald);box-shadow:0 0 0 3px rgba(16,185,129,.14);}
+.finput::placeholder{color:rgba(148,163,184,.42);}
+.finput-sm{font-size:13px;padding:8px 11px;border-radius:8px;}
+
+/* Stock cards */
+.scard{background:rgba(22,35,55,.65);border:2px solid transparent;border-radius:11px;cursor:pointer;
+  position:relative;overflow:hidden;transition:border-color .2s,background .2s,transform .15s;padding:12px 13px;}
+.scard:hover{transform:translateY(-2px);border-color:rgba(16,185,129,.38);}
+.scard.sel{border-color:var(--emerald);background:rgba(16,185,129,.07);}
+.scard .chk{display:none;position:absolute;top:8px;right:9px;width:18px;height:18px;border-radius:50%;
+  background:rgba(16,185,129,.2);color:var(--emerald);font-size:10px;font-weight:700;align-items:center;justify-content:center;}
+.scard.sel .chk{display:flex;}
+
+/* Risk badges */
+.rbadge{border-radius:20px;font-size:10.5px;font-weight:600;padding:2px 8px;white-space:nowrap;display:inline-block;}
+.r-Low{background:rgba(16,185,129,.14);color:#34d399;border:1px solid rgba(16,185,129,.28);}
+.r-Med{background:rgba(245,158,11,.14);color:#fbbf24;border:1px solid rgba(245,158,11,.28);}
+.r-High{background:rgba(244,63,94,.14);color:#fb7185;border:1px solid rgba(244,63,94,.28);}
+.r-unk{background:rgba(148,163,184,.1);color:#94a3b8;border:1px solid rgba(148,163,184,.2);}
+
+/* Sliders */
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:rgba(148,163,184,.18);outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:var(--emerald);cursor:pointer;box-shadow:0 0 0 3px rgba(16,185,129,.22);transition:box-shadow .2s;}
+input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 0 5px rgba(16,185,129,.32);}
+
+/* Pct bar */
+.pbar-track{height:7px;background:rgba(148,163,184,.14);border-radius:4px;overflow:hidden;}
+.pbar-fill{height:100%;border-radius:4px;transition:width .3s,background .3s;}
+
+/* Metric cards */
+.metric{background:rgba(22,35,55,.7);border:1px solid rgba(148,163,184,.1);border-radius:14px;
+  padding:18px 20px;position:relative;overflow:hidden;}
+.metric::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;
+  border-radius:3px 0 0 3px;background:var(--mc,var(--emerald));}
+
+/* Table */
+.ptable th{background:rgba(11,18,32,.85);color:#64748b;font-size:10.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.07em;padding:11px 13px;}
+.ptable td{padding:12px 13px;border-bottom:1px solid rgba(148,163,184,.06);font-size:13px;vertical-align:middle;}
+.ptable tr:last-child td{border-bottom:none;}
+.ptable tbody tr:hover td{background:rgba(16,185,129,.035);}
+
+/* Tooltip */
+.tip{position:relative;cursor:help;display:inline-flex;}
+.tip .tipbox{display:none;position:absolute;bottom:130%;left:50%;transform:translateX(-50%);
+  background:rgba(11,18,32,.97);border:1px solid rgba(148,163,184,.18);color:#cbd5e1;
+  font-size:11.5px;padding:8px 11px;border-radius:8px;width:215px;text-align:center;z-index:200;
+  pointer-events:none;line-height:1.5;box-shadow:0 8px 32px rgba(0,0,0,.55);}
+.tip:hover .tipbox{display:block;}
+
+/* Sections */
+.section{display:none;}
+.section.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.fade-up{animation:fadeUp .38s ease both;}
+
+/* Spinner */
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin{display:inline-block;animation:spin .75s linear infinite;}
+
+/* Toast */
+#toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:rgba(22,35,55,.97);
+  border:1px solid rgba(148,163,184,.18);border-radius:12px;padding:13px 18px;font-size:13.5px;
+  max-width:310px;transform:translateY(18px);opacity:0;pointer-events:none;
+  transition:opacity .3s,transform .3s;backdrop-filter:blur(12px);
+  border-left:3px solid var(--tc,#94a3b8);}
+#toast.show{opacity:1;transform:translateY(0);}
+
+/* Price live */
+.price-live{color:#34d399;}
+
+/* Strategy button active ring */
+.strat-btn{font-family:'DM Sans',sans-serif;cursor:pointer;text-align:left;}
+.strat-btn:hover{transform:translateY(-1px);}
+
+/* Price loading placeholder */
+.price-loading{color:rgba(148,163,184,.35);font-style:italic;}
+@keyframes priceIn{from{opacity:0;transform:scale(.92);}to{opacity:1;transform:scale(1);}}
+.price-live{animation:priceIn .3s ease both;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:rgba(22,35,55,.4);}
+::-webkit-scrollbar-thumb{background:rgba(148,163,184,.22);border-radius:3px;}
+
+/* Server banner */
+#serverBanner{display:none;}
+#serverBanner.show{display:block;}
+
+/* Skeleton loading */
+.skel{background:linear-gradient(90deg,rgba(30,45,70,.5) 25%,rgba(50,70,100,.4) 50%,rgba(30,45,70,.5) 75%);
+  background-size:400px 100%;animation:shimmer 1.4s infinite;border-radius:4px;}
+@keyframes shimmer{0%{background-position:-400px 0;}100%{background-position:400px 0;}}
+</style>
+
+<script>
+// =================================================================
+//  BEGINVEST v3 — CORS-SAFE EDITION
+//
+//  ROOT CAUSE FIX: Browsers block fetch() from file:// origins.
+//  SOLUTION: We use THREE fallback strategies:
+//    1. Direct Finnhub fetch (works when served via http://localhost)
+//    2. allorigins.win CORS proxy (works from file://)
+//    3. corsproxy.io CORS proxy (second fallback)
+//    4. Hardcoded fallback prices (always works, no network needed)
+//
+//  HOW TO RUN FOR BEST RESULTS:
+//    Option A (Python):  python3 -m http.server 8080
+//    Option B (Node):    npx serve .
+//    Then open:          http://localhost:8080/beginvest.html
+//
+//  Or just open the file directly — fallback prices will be used
+//  and the app is fully functional for learning & planning.
+// =================================================================
+
+// Embedded Finnhub API key — get your own free at finnhub.io/register
+const FINNHUB_KEY = 'd7nr3kpr01qm3637gk4gd7nr3kpr01qm3637gk50';
+const FH_BASE     = 'https://finnhub.io/api/v1';
+
+// CORS proxy URLs — used when opening as a local file (file://)
+// allorigins wraps any URL and strips CORS restrictions
+const PROXY_1 = url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+const PROXY_2 = url => `https://corsproxy.io/?${encodeURIComponent(url)}`;
+
+// Detect if running from file:// (needs proxy) or http:// (direct OK)
+const IS_FILE_PROTOCOL = location.protocol === 'file:';
+
+// =================================================================
+//  CURATED DEFAULT LIST
+// =================================================================
+const CURATED = [
+  "INDA","QCLN","TSLA","IBB","ARKK","AAPL","VGK","SOXX",
+  "SCHD","ICLN","IVV","ONEQ","VTI","WM","QTUM","FAN",
+  "MSFT","AMZN","NVDA","GOOGL","META","SPY","QQQ","GLD",
+  "AMD","NFLX","PLTR","COIN","CRWD","NEE","XLK","XLV",
+  "AGG","VWO","EEM","SHOP","UBER","SNOW","NET","PANW"
+];
+
+// =================================================================
+//  STATIC METADATA  (name, sector — extended offline coverage)
+// =================================================================
+const META = {
+  INDA:{n:"iShares MSCI India ETF",s:"Emerging Markets"},
+  QCLN:{n:"First Trust NASDAQ Clean Edge ETF",s:"Clean Energy"},
+  TSLA:{n:"Tesla Inc.",s:"Technology / EV"},
+  IBB: {n:"iShares Biotechnology ETF",s:"Healthcare"},
+  ARKK:{n:"ARK Innovation ETF",s:"Innovation"},
+  AAPL:{n:"Apple Inc.",s:"Technology"},
+  VGK: {n:"Vanguard FTSE Europe ETF",s:"International"},
+  SOXX:{n:"iShares PHLX Semiconductor ETF",s:"Semiconductors"},
+  SCHD:{n:"Schwab US Dividend Equity ETF",s:"Dividend / Value"},
+  ICLN:{n:"iShares Global Clean Energy ETF",s:"Clean Energy"},
+  IVV: {n:"iShares Core S&P 500 ETF",s:"US Broad Market"},
+  ONEQ:{n:"Fidelity Nasdaq Composite ETF",s:"US Broad Market"},
+  VTI: {n:"Vanguard Total Stock Market ETF",s:"US Broad Market"},
+  WM:  {n:"Waste Management Inc.",s:"Industrials"},
+  QTUM:{n:"Defiance Quantum ETF",s:"Technology"},
+  FAN: {n:"First Trust Global Wind Energy ETF",s:"Clean Energy"},
+  MSFT:{n:"Microsoft Corporation",s:"Technology"},
+  AMZN:{n:"Amazon.com Inc.",s:"Consumer / Tech"},
+  GOOGL:{n:"Alphabet Inc.",s:"Technology"},
+  NVDA:{n:"NVIDIA Corporation",s:"Semiconductors"},
+  META:{n:"Meta Platforms Inc.",s:"Technology"},
+  JPM: {n:"JPMorgan Chase & Co.",s:"Financials"},
+  V:   {n:"Visa Inc.",s:"Financials"},
+  JNJ: {n:"Johnson & Johnson",s:"Healthcare"},
+  PG:  {n:"Procter & Gamble Co.",s:"Consumer Staples"},
+  KO:  {n:"Coca-Cola Company",s:"Consumer Staples"},
+  DIS: {n:"Walt Disney Company",s:"Media / Entertainment"},
+  NFLX:{n:"Netflix Inc.",s:"Media / Entertainment"},
+  AMD: {n:"Advanced Micro Devices Inc.",s:"Semiconductors"},
+  INTC:{n:"Intel Corporation",s:"Semiconductors"},
+  BA:  {n:"Boeing Company",s:"Industrials"},
+  XOM: {n:"Exxon Mobil Corporation",s:"Energy"},
+  NEE: {n:"NextEra Energy Inc.",s:"Clean Energy"},
+  SPY: {n:"SPDR S&P 500 ETF Trust",s:"US Broad Market"},
+  QQQ: {n:"Invesco QQQ Trust (NASDAQ-100)",s:"Technology"},
+  GLD: {n:"SPDR Gold Shares",s:"Commodities"},
+  AGG: {n:"iShares Core US Aggregate Bond ETF",s:"Fixed Income"},
+  BND: {n:"Vanguard Total Bond Market ETF",s:"Fixed Income"},
+  VEA: {n:"Vanguard FTSE Developed Mkts ETF",s:"International"},
+  VWO: {n:"Vanguard FTSE Emerging Markets ETF",s:"Emerging Markets"},
+  EEM: {n:"iShares MSCI Emerging Markets ETF",s:"Emerging Markets"},
+  XLK: {n:"Technology Select Sector SPDR",s:"Technology"},
+  XLV: {n:"Health Care Select Sector SPDR",s:"Healthcare"},
+  XLF: {n:"Financial Select Sector SPDR",s:"Financials"},
+  XLE: {n:"Energy Select Sector SPDR",s:"Energy"},
+  XLI: {n:"Industrial Select Sector SPDR",s:"Industrials"},
+  XLP: {n:"Consumer Staples Select SPDR",s:"Consumer Staples"},
+  XLY: {n:"Consumer Discret Select SPDR",s:"Consumer Discretionary"},
+  XLU: {n:"Utilities Select Sector SPDR",s:"Utilities"},
+  VNQ: {n:"Vanguard Real Estate ETF",s:"Real Estate"},
+  ARKW:{n:"ARK Next Gen Internet ETF",s:"Innovation"},
+  ARKG:{n:"ARK Genomic Revolution ETF",s:"Healthcare"},
+  PLTR:{n:"Palantir Technologies Inc.",s:"Technology"},
+  COIN:{n:"Coinbase Global Inc.",s:"Fintech / Crypto"},
+  SHOP:{n:"Shopify Inc.",s:"Consumer / Tech"},
+  UBER:{n:"Uber Technologies Inc.",s:"Transportation"},
+  ABNB:{n:"Airbnb Inc.",s:"Travel"},
+  CRWD:{n:"CrowdStrike Holdings Inc.",s:"Cybersecurity"},
+  PANW:{n:"Palo Alto Networks Inc.",s:"Cybersecurity"},
+  NET: {n:"Cloudflare Inc.",s:"Technology"},
+  SNOW:{n:"Snowflake Inc.",s:"Technology"},
+  PFE: {n:"Pfizer Inc.",s:"Healthcare"},
+  UNH: {n:"UnitedHealth Group Inc.",s:"Healthcare"},
+  WMT: {n:"Walmart Inc.",s:"Consumer Staples"},
+  COST:{n:"Costco Wholesale Corporation",s:"Consumer Staples"},
+  TSM: {n:"Taiwan Semiconductor Mfg ADS",s:"Semiconductors"},
+  ASML:{n:"ASML Holding N.V. ADS",s:"Semiconductors"},
+  LMT: {n:"Lockheed Martin Corporation",s:"Defense"},
+  GE:  {n:"General Electric Company",s:"Industrials"},
+  F:   {n:"Ford Motor Company",s:"Automotive"},
+  GM:  {n:"General Motors Company",s:"Automotive"},
+  RIVN:{n:"Rivian Automotive Inc.",s:"Automotive / EV"},
+  NIO: {n:"NIO Inc. (ADS)",s:"Automotive / EV"},
+  BABA:{n:"Alibaba Group Holding ADS",s:"Emerging Markets"},
+  T:   {n:"AT&T Inc.",s:"Telecom"},
+  VZ:  {n:"Verizon Communications",s:"Telecom"},
+  AMGN:{n:"Amgen Inc.",s:"Healthcare"},
+  GILD:{n:"Gilead Sciences Inc.",s:"Healthcare"},
+  ABBV:{n:"AbbVie Inc.",s:"Healthcare"},
+  CVS: {n:"CVS Health Corporation",s:"Healthcare"},
+  HON: {n:"Honeywell International Inc.",s:"Industrials"},
+  MMM: {n:"3M Company",s:"Industrials"},
+  RTX: {n:"Raytheon Technologies",s:"Defense"},
+  PYPL:{n:"PayPal Holdings Inc.",s:"Fintech"},
+  SQ:  {n:"Block Inc.",s:"Fintech"},
+  DDOG:{n:"Datadog Inc.",s:"Technology"},
+  MDB: {n:"MongoDB Inc.",s:"Technology"},
+  RBLX:{n:"Roblox Corporation",s:"Gaming / Metaverse"},
+  TMUS:{n:"T-Mobile US Inc.",s:"Telecom"},
+  ZM:  {n:"Zoom Video Communications",s:"Technology"},
+  SNAP:{n:"Snap Inc.",s:"Social Media"},
+  LYFT:{n:"Lyft Inc.",s:"Transportation"},
+  MRK: {n:"Merck & Co. Inc.",s:"Healthcare"},
+  ISRG:{n:"Intuitive Surgical Inc.",s:"Healthcare"},
+  DHR: {n:"Danaher Corporation",s:"Healthcare"},
+  TGT: {n:"Target Corporation",s:"Consumer Discretionary"},
+  NVAX:{n:"Novavax Inc.",s:"Healthcare"},
+  LCID:{n:"Lucid Group Inc.",s:"Automotive / EV"},
+  JD:  {n:"JD.com Inc. ADS",s:"Emerging Markets"},
+  SLV: {n:"iShares Silver Trust",s:"Commodities"},
+  BNDX:{n:"Vanguard Total Intl Bond ETF",s:"Fixed Income"},
+  EMB: {n:"iShares JP Morgan EM Bond ETF",s:"Fixed Income"},
+  EFA: {n:"iShares MSCI EAFE ETF",s:"International"},
+  XLRE:{n:"Real Estate Select Sector SPDR",s:"Real Estate"},
+  CAT: {n:"Caterpillar Inc.",s:"Industrials"},
+  CVX: {n:"Chevron Corporation",s:"Energy"},
+  ZTS: {n:"Zoetis Inc.",s:"Healthcare"},
+  REGN:{n:"Regeneron Pharmaceuticals",s:"Healthcare"},
+  CFLT:{n:"Confluent Inc.",s:"Technology"},
+};
+
+// =================================================================
+//  STATIC RISK FALLBACKS
+//  Many ETFs return null beta from Finnhub. This gives every curated
+//  ticker an immediate risk rating based on known characteristics.
+//  Live beta from Finnhub will override these when available.
+// =================================================================
+const STATIC_RISK = {
+  // Low — broad market, dividend, bond, stable ETFs
+  IVV:'Low', VTI:'Low', SPY:'Low', SCHD:'Low', AGG:'Low', BND:'Low',
+  VEA:'Low', VGK:'Low', WM:'Low', GLD:'Low', XLP:'Low', XLU:'Low',
+  BNDX:'Low', EMB:'Low', EFA:'Low', XLRE:'Low', VNQ:'Low', KO:'Low',
+  PG:'Low', JNJ:'Low', UNH:'Low', WMT:'Low', COST:'Low', T:'Low', VZ:'Low',
+  // Med — diversified thematic, sector ETFs, blue chip growth
+  INDA:'Med', QCLN:'Med', VWO:'Med', EEM:'Med', ICLN:'Med', FAN:'Med',
+  ONEQ:'Med', QQQ:'Med', XLK:'Med', XLV:'Med', XLF:'Med', XLE:'Med',
+  XLI:'Med', XLY:'Med', NEE:'Med', MSFT:'Med', AAPL:'Med', GOOGL:'Med',
+  META:'Med', AMZN:'Med', NVDA:'Med', AMD:'Med', TSM:'Med', ASML:'Med',
+  JPM:'Med', V:'Med', XOM:'Med', CVX:'Med', NFLX:'Med', DIS:'Med',
+  BA:'Med', HON:'Med', CAT:'Med', LMT:'Med', RTX:'Med', TMUS:'Med',
+  AMGN:'Med', GILD:'Med', ABBV:'Med', PFE:'Med', MRK:'Med', CVS:'Med',
+  ZTS:'Med', ISRG:'Med', DHR:'Med', SLV:'Med', PYPL:'Med',
+  // High — volatile, speculative, thematic, high-beta
+  TSLA:'High', ARKK:'High', ARKW:'High', ARKG:'High', IBB:'High',
+  SOXX:'High', QTUM:'High', PLTR:'High', COIN:'High', CRWD:'High',
+  PANW:'High', NET:'High', SNOW:'High', SHOP:'High', UBER:'High',
+  ABNB:'High', RIVN:'High', NIO:'High', LCID:'High', BABA:'High',
+  JD:'High', NVAX:'High', RBLX:'High', SNAP:'High', LYFT:'High',
+  REGN:'High', MDB:'High', DDOG:'High', CFLT:'High', ZM:'High',
+  SQ:'High', F:'High', GM:'High', GE:'High', INTC:'High',
+};
+
+const FALLBACK = {
+  INDA:26.50, QCLN:15.20, TSLA:252.00, IBB:136.00, ARKK:52.00,
+  AAPL:213.00, VGK:67.00, SOXX:228.00, SCHD:79.50, ICLN:14.20,
+  IVV:590.00, ONEQ:52.00, VTI:276.00, WM:220.00, QTUM:51.00, FAN:15.00,
+  MSFT:442.00, AMZN:223.00, NVDA:135.00, GOOGL:195.00, META:610.00,
+  SPY:592.00, QQQ:508.00, GLD:296.00, AMD:108.00, NFLX:1060.00,
+  PLTR:123.00, COIN:230.00, CRWD:395.00, NEE:67.00, XLK:238.00,
+  XLV:148.00, AGG:96.00, VWO:44.00, EEM:42.00, SHOP:113.00,
+  UBER:83.00, SNOW:155.00, NET:118.00, PANW:190.00,
+  JPM:264.00, V:347.00, JNJ:155.00, PG:175.00, KO:70.00,
+  DIS:97.00, NFLX:1060.00, AMD:108.00, INTC:21.00, BA:175.00,
+  XOM:110.00, BND:73.00, VEA:52.00, VNQ:87.00,
+};
+
+// Sector → chart color
+const SEC_CLR = {
+  'Technology':'#38bdf8','Technology / EV':'#22d3ee','Clean Energy':'#10b981',
+  'Semiconductors':'#a78bfa','US Broad Market':'#60a5fa','Emerging Markets':'#fb923c',
+  'Healthcare':'#f472b6','Innovation':'#e879f9','International':'#facc15',
+  'Dividend / Value':'#34d399','Industrials':'#94a3b8','Financials':'#818cf8',
+  'Consumer Staples':'#6ee7b7','Consumer Discretionary':'#fda4af',
+  'Consumer / Tech':'#7dd3fc','Automotive':'#d4d4d8','Automotive / EV':'#86efac',
+  'Fixed Income':'#c4b5fd','Commodities':'#fde68a','Real Estate':'#fb923c',
+  'Energy':'#fbbf24','Utilities':'#34d399','Defense':'#64748b','Telecom':'#94a3b8',
+  'Fintech':'#a78bfa','Fintech / Crypto':'#f97316','Media / Entertainment':'#e879f9',
+  'Gaming / Metaverse':'#c084fc','Cybersecurity':'#ef4444','Social Media':'#60a5fa',
+  'Transportation':'#94a3b8','Travel':'#fbbf24',
+};
+
+// =================================================================
+//  APP STATE
+// =================================================================
+const S = {
+  step:1, totalAmount:0,
+  selected:[], allocations:{},
+  prices:{}, betas:{}, risks:{},
+  names:{}, sectors:{},
+  allSymbols:[], symbolsLoaded:false,
+  pricesSource:'none', portfolioResult:null,
+  fetchMethod:'unknown', // 'direct'|'proxy1'|'proxy2'|'fallback'
+};
+// Pre-fill names/sectors from META, and static risks from STATIC_RISK
+Object.keys(META).forEach(t=>{S.names[t]=META[t].n; S.sectors[t]=META[t].s;});
+Object.keys(STATIC_RISK).forEach(t=>{ S.risks[t]=STATIC_RISK[t]; });
+
+// =================================================================
+//  UTILS
+// =================================================================
+const $ = id=>document.getElementById(id);
+const fmt = (n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const sleep = ms=>new Promise(r=>setTimeout(r,ms));
+
+function showToast(msg,type='info',dur=4000){
+  const t=$('toast'),c={success:'#10b981',error:'#f43f5e',info:'#38bdf8',warn:'#f59e0b'};
+  t.style.setProperty('--tc',c[type]||'#94a3b8');
+  t.textContent=msg; t.className='show';
+  clearTimeout(t._t); t._t=setTimeout(()=>{t.className='';},dur);
+}
+
+// =================================================================
+//  RISK METHODOLOGY
+//  Source: Morningstar ETF Risk Analysis, Brown Advisory ETF Risk Guide
+//  52-week Beta vs S&P 500:
+//    β < 0.8  = Low  (stable, moves less than market)
+//    β 0.8–1.3 = Med  (tracks market)
+//    β > 1.3  = High (volatile, amplifies market moves)
+// =================================================================
+function betaToRisk(b){
+  if(b==null||isNaN(b)) return null;
+  if(b<0.8)  return 'Low';
+  if(b<=1.3) return 'Med';
+  return 'High';
+}
+function riskCls(r){return r==='Low'?'r-Low':r==='Med'?'r-Med':r==='High'?'r-High':'r-unk';}
+function riskHex(r){return r==='Low'?'#10b981':r==='Med'?'#f59e0b':'#f43f5e';}
+function secClr(s){return SEC_CLR[s]||'#94a3b8';}
+
+// =================================================================
+//  CORE FETCH HELPER
+//  Tries three strategies in order:
+//    1. Direct fetch (works from http:// pages)
+//    2. allorigins.win proxy (works from file:// pages)
+//    3. corsproxy.io proxy (second proxy fallback)
+//  Returns parsed JSON or null.
+// =================================================================
+async function smartFetch(url) {
+  // --- Strategy 1: Direct ---
+  try {
+    const r = await fetch(url, {signal: AbortSignal.timeout(6000)});
+    if(r.ok) {
+      const d = await r.json();
+      S.fetchMethod = 'direct';
+      return d;
+    }
+  } catch(e) {
+    // Direct failed (likely CORS from file://) — try proxies
+  }
+
+  // --- Strategy 2: allorigins proxy ---
+  try {
+    const r = await fetch(PROXY_1(url), {signal: AbortSignal.timeout(8000)});
+    if(r.ok) {
+      const wrapper = await r.json();
+      // allorigins returns {contents: "...", status: {...}}
+      if(wrapper.contents) {
+        const d = JSON.parse(wrapper.contents);
+        S.fetchMethod = 'proxy1';
+        return d;
+      }
+    }
+  } catch(e) {
+    // proxy 1 failed
+  }
+
+  // --- Strategy 3: corsproxy.io ---
+  try {
+    const r = await fetch(PROXY_2(url), {signal: AbortSignal.timeout(8000)});
+    if(r.ok) {
+      const d = await r.json();
+      S.fetchMethod = 'proxy2';
+      return d;
+    }
+  } catch(e) {
+    // proxy 2 failed
+  }
+
+  return null; // all strategies failed
+}
+
+// =================================================================
+//  FINNHUB API WRAPPERS
+// =================================================================
+
+// GET /quote?symbol=X  →  current price
+async function getQuote(ticker) {
+  const url = `${FH_BASE}/quote?symbol=${ticker}&token=${FINNHUB_KEY}`;
+  const d = await smartFetch(url);
+  if(!d) return null;
+  return (d.c && d.c > 0) ? d.c : null;
+}
+
+// GET /stock/metric?symbol=X&metric=all  →  52-week beta
+async function getBeta(ticker) {
+  const url = `${FH_BASE}/stock/metric?symbol=${ticker}&metric=all&token=${FINNHUB_KEY}`;
+  const d = await smartFetch(url);
+  if(!d) return null;
+  const b = d?.metric?.beta;
+  return (typeof b==='number' && isFinite(b)) ? b : null;
+}
+
+// GET /stock/symbol?exchange=US  →  full symbol list
+async function getAllSymbols() {
+  const url = `${FH_BASE}/stock/symbol?exchange=US&token=${FINNHUB_KEY}`;
+  const d = await smartFetch(url);
+  if(!d || !Array.isArray(d)) return null;
+  return d;
+}
+
+// Batch-enrich multiple tickers (price + beta) with delay
+// Free tier: 60 req/min → delay between calls
+async function enrichTickers(tickers) {
+  let ok=0;
+  for(const t of tickers) {
+    // Always re-fetch price for freshness
+    const p = await getQuote(t);
+    if(p != null){
+      S.prices[t] = p; // live price — never overwrite with fallback
+      ok++;
+    } else if(!S.prices[t]) {
+      S.prices[t] = FALLBACK[t] ?? null; // only use fallback if no price at all
+    }
+    await sleep(150);
+
+    // Fetch beta if not cached (static risk already pre-filled)
+    if(!S.betas[t]){
+      const b = await getBeta(t);
+      if(b!=null){ S.betas[t]=b; S.risks[t]=betaToRisk(b); }
+    }
+    await sleep(150);
+  }
+  S.pricesSource = ok>0 ? (ok===tickers.length?'live':'partial') : 'fallback';
+  updateFetchBadge();
+}
+
+function updateFetchBadge() {
+  const el=$('fetchBadge'); if(!el) return;
+  const map = {
+    live:   {t:'✅ Live prices from Finnhub API',    c:'text-emerald-400'},
+    partial:{t:'⚠ Mix of live + fallback prices',    c:'text-amber-400'},
+    fallback:{t:'📋 Using fallback prices (network unavailable)', c:'text-sky-400'},
+    none:   {t:'',c:''},
+  };
+  const m = map[S.pricesSource]||map.none;
+  el.className=`text-xs ${m.c}`; el.textContent=m.t;
+  const mEl=$('fetchMethod'); if(mEl&&S.fetchMethod!=='unknown'){
+    mEl.textContent = S.fetchMethod==='direct'?'(direct connection)':
+                     S.fetchMethod==='proxy1'?'(via allorigins proxy)':
+                     S.fetchMethod==='proxy2'?'(via corsproxy)':'';
+  }
+}
+
+// =================================================================
+//  STEP NAVIGATION
+// =================================================================
+function goTo(step){
+  S.step=step;
+  [1,2,3].forEach(i=>{
+    const dot=$(`sdot${i}`),lbl=$(`slbl${i}`),line=$(`sline${i}`);
+    dot.className=dot.className.replace(/\s*(bg-\S+|text-\S+|ring-\S+)/g,'');
+    if(i<step){dot.classList.add('bg-emerald-600','text-white');dot.innerHTML='✓';}
+    else if(i===step){dot.classList.add('bg-emerald-500','text-white');dot.textContent=i;}
+    else{dot.classList.add('bg-slate-700','text-slate-400');dot.textContent=i;}
+    lbl.className=lbl.className.replace(/text-\S+/g,'');
+    lbl.classList.add(i===step?'text-emerald-400':i<step?'text-slate-300':'text-slate-500');
+    if(line) line.className=`step-line${i<step?' done':''}`;
+  });
+  ['sec1','sec2','sec3'].forEach((id,idx)=>{
+    const el=$(id); el.classList.toggle('active',idx+1===step);
+    if(idx+1===step) el.classList.add('fade-up'); else el.classList.remove('fade-up');
+  });
+}
+
+// =================================================================
+//  STEP 1
+// =================================================================
+function initStep1(){
+  $('btn1next').onclick=()=>{
+    const amt=parseFloat($('investAmt').value.replace(/,/g,''));
+    if(!amt||amt<=0){showToast('Please enter a valid investment amount.','error');return;}
+    S.totalAmount=amt; goTo(2); initStep2();
+  };
+  document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{$('investAmt').value=b.dataset.q;});
+}
+
+// =================================================================
+//  STEP 2 — STOCK BROWSER
+// =================================================================
+let searchTimer=null, visibleTickers=[...CURATED];
+
+async function initStep2(){
+  visibleTickers=[...CURATED];
+  renderGrid(visibleTickers);
+  updateSelCount();
+
+  // Kick off background symbol load
+  loadAllSymbolsBackground();
+
+  // ── NEW: Pre-fetch prices + betas for all curated cards immediately ──
+  // Runs in background; cards update progressively as data arrives.
+  prefetchCurated();
+
+  $('stockSearch').oninput=e=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>runSearch(e.target.value.trim()),280);};
+
+  $('refreshBtn').onclick=async()=>{
+    if(!S.selected.length){showToast('Select some stocks first.','info');return;}
+    setRefBtn(true);
+    await enrichTickers(S.selected);
+    renderGrid(visibleTickers); buildAllocPanel();
+    setRefBtn(false);
+    showToast('Prices & risk ratings updated!','success');
+  };
+  $('btn2back').onclick=()=>goTo(1);
+  $('btn2next').onclick=proceedToResults;
+}
+
+function setRefBtn(loading){
+  const b=$('refreshBtn'); b.disabled=loading;
+  b.innerHTML=loading?'<span class="spin">⟳</span> Fetching…':'⟳ Refresh Prices';
+}
+
+// =================================================================
+//  PRE-FETCH: Load prices + betas for all curated cards on page open
+//  Cards update progressively in the grid as each result arrives.
+//  Static risks (STATIC_RISK) are shown immediately; live beta
+//  from Finnhub overrides them when available.
+// =================================================================
+async function prefetchCurated(){
+  // Only fetch prices — betas for ETFs often return null from Finnhub,
+  // so we rely on STATIC_RISK for most cards and only try beta for stocks.
+  const needed = CURATED.filter(t => !S.prices[t]);
+  if(!needed.length){ renderGrid(visibleTickers); return; }
+
+  for(const ticker of needed){
+    // Fetch live price — only fall back to hardcoded if API returns null
+    const p = await getQuote(ticker);
+    if(p != null){
+      S.prices[ticker] = p; // ✅ live price
+    } else if(!S.prices[ticker]){
+      S.prices[ticker] = FALLBACK[ticker] ?? null; // hardcoded fallback
+    }
+    await sleep(160);
+
+    // Only fetch beta if we don't already have a static risk for this ticker
+    if(!S.risks[ticker]){
+      const b = await getBeta(ticker);
+      if(b != null){ S.betas[ticker]=b; S.risks[ticker]=betaToRisk(b); }
+    } else if(!S.betas[ticker]) {
+      // Try to get beta in background to show the numeric value, but don't block
+      getBeta(ticker).then(b=>{
+        if(b!=null){ S.betas[ticker]=b; S.risks[ticker]=betaToRisk(b); patchCard(ticker); }
+      });
+    }
+
+    // Patch just this card — no full re-render
+    patchCard(ticker);
+    if(S.selected.includes(ticker)) buildAllocPanel();
+  }
+}
+
+// Update a single card's price + risk badge without re-rendering the whole grid
+function patchCard(ticker){
+  const card = document.querySelector(`[data-ticker="${ticker}"]`);
+  if(!card) return;
+  const pr = S.prices[ticker], rk = S.risks[ticker];
+  // Price element: matches either price-live or price-loading
+  const prEl = card.querySelector('.price-live, .price-loading');
+  const rEl  = card.querySelector('.rbadge');
+  if(prEl){
+    prEl.textContent = pr ? '$'+fmt(pr) : '–';
+    prEl.className   = `text-xs font-semibold ${pr ? 'price-live' : 'text-slate-500'} shrink-0`;
+    prEl.style.fontStyle = '';
+  }
+  if(rEl){
+    rEl.textContent = rk || '–';
+    rEl.className   = `rbadge ${riskCls(rk)}`;
+    rEl.style.opacity = ''; rEl.style.fontStyle = '';
+  }
+}
+
+// =================================================================
+//  STRATEGY ALLOCATION
+//  Conservative : Low 60% · Med 30% · High 10%
+//  Moderate     : Low 34% · Med 33% · High 33%
+//  Aggressive   : Low 10% · Med 30% · High 60%
+//  Equal        : 100% ÷ N stocks (ignores risk tier)
+//
+//  Empty-tier handling: if a selected tier has no stocks,
+//  its weight is redistributed proportionally to the other
+//  non-empty tiers so the total always equals exactly 100%.
+// =================================================================
+function applyStrategy(mode){
+  if(!S.selected.length){ showToast('Select at least one stock first.','info'); return; }
+
+  // Highlight active strategy button
+  document.querySelectorAll('.strat-btn').forEach(b=>{
+    b.style.outline=''; b.style.boxShadow='';
+  });
+  const ids = {conservative:'stratConservative',moderate:'stratModerate',
+               aggressive:'stratAggressive',equal:'equalSplit'};
+  const activeEl = $(ids[mode]);
+  if(activeEl) activeEl.style.outline='2px solid rgba(16,185,129,.75)';
+
+  if(mode === 'equal'){
+    const n = S.selected.length;
+    // Use integer arithmetic to avoid floating point drift
+    const base = Math.floor(10000 / n);          // hundredths of a percent
+    const rem  = 10000 - base * n;
+    S.selected.forEach((t,i)=>{
+      S.allocations[t] = +((base + (i < rem ? 1 : 0)) / 100).toFixed(2);
+    });
+    const stratMsg=$('stratMsg');
+    if(stratMsg) stratMsg.textContent=`Equal split: ${fmt(100/n,2)}% per stock.`;
+    buildAllocPanel(); return;
+  }
+
+  // Base tier weights
+  const BASE = {
+    conservative: {Low:60, Med:30, High:10},
+    moderate:     {Low:34, Med:33, High:33},
+    aggressive:   {Low:10, Med:30, High:60},
+  }[mode];
+
+  // Group selected tickers by risk (unknown → Med)
+  const groups = {Low:[], Med:[], High:[]};
+  S.selected.forEach(t => groups[S.risks[t]||'Med'].push(t));
+
+  // --- Redistribute weight from empty tiers ---
+  // Figure out which tiers have stocks and which don't
+  const hasTier  = tier => groups[tier].length > 0;
+  const emptyW   = ['Low','Med','High'].filter(t=>!hasTier(t)).reduce((s,t)=>s+BASE[t],0);
+  const filledW  = ['Low','Med','High'].filter(t=> hasTier(t)).reduce((s,t)=>s+BASE[t],0);
+
+  // Effective weight for each tier (scale filled tiers up to absorb empty weight)
+  const effective = {};
+  ['Low','Med','High'].forEach(tier=>{
+    if(!hasTier(tier)){ effective[tier]=0; return; }
+    // Proportional share of the total 100%
+    effective[tier] = Math.round(BASE[tier] / filledW * 100 * 100) / 100;
+  });
+
+  // Ensure effective weights sum to exactly 100 (fix rounding)
+  const effSum = Object.values(effective).reduce((s,v)=>s+v,0);
+  const effDrift = +(100 - effSum).toFixed(2);
+  if(effDrift !== 0){
+    // Add drift to the largest non-zero tier
+    const bigTier = ['Low','Med','High'].filter(t=>effective[t]>0).sort((a,b)=>effective[b]-effective[a])[0];
+    effective[bigTier] = +(effective[bigTier]+effDrift).toFixed(2);
+  }
+
+  // Distribute each tier's effective weight evenly across its stocks
+  const assigned = {};
+  ['Low','Med','High'].forEach(tier=>{
+    const stocks = groups[tier];
+    if(!stocks.length) return;
+    const tierPct  = effective[tier];
+    const perStock = Math.floor((tierPct / stocks.length) * 100) / 100;
+    let tierUsed   = 0;
+    stocks.forEach((t,i)=>{
+      if(i === stocks.length-1){
+        // Last stock in tier absorbs remainder so tier sums exactly
+        assigned[t] = +Math.max(0, tierPct - tierUsed).toFixed(2);
+      } else {
+        assigned[t] = perStock;
+        tierUsed    += perStock;
+      }
+    });
+  });
+
+  // Final sanity check: total must = 100
+  let total = Object.values(assigned).reduce((s,v)=>s+v,0);
+  total = +total.toFixed(2);
+  if(total !== 100){
+    const lastKey = S.selected[S.selected.length-1];
+    if(assigned[lastKey] != null){
+      assigned[lastKey] = +(assigned[lastKey] + (100-total)).toFixed(2);
+    }
+  }
+
+  S.allocations = assigned;
+
+  // Build summary message
+  const tierSummary = ['Low','Med','High']
+    .filter(t=>groups[t].length)
+    .map(t=>`${groups[t].length} ${t} (${fmt(effective[t],1)}%)`)
+    .join(' · ');
+  const modeLabels = {
+    conservative:'🛡 Conservative applied.',
+    moderate:    '⚖ Moderate applied.',
+    aggressive:  '🚀 Aggressive applied.',
+  };
+  const warningTiers = ['Low','Med','High'].filter(t=>!hasTier(t)&&BASE[t]>0);
+  const warnMsg = warningTiers.length
+    ? ` Note: no ${warningTiers.join('/')} stocks selected — weight redistributed.` : '';
+  const stratMsg=$('stratMsg');
+  if(stratMsg) stratMsg.textContent = modeLabels[mode]+warnMsg+' '+tierSummary;
+
+  buildAllocPanel();
+  showToast(modeLabels[mode],'success',2500);
+}
+
+async function loadAllSymbolsBackground(){
+  const badge=$('symBadge'); if(badge) badge.textContent='Loading US stock universe…';
+  const data = await getAllSymbols();
+  if(data && data.length>0){
+    S.allSymbols = data
+      .filter(d=>d.symbol&&d.description&&!d.symbol.includes('.')&&!d.symbol.includes('-')&&d.symbol.length<=5)
+      .sort((a,b)=>a.symbol.localeCompare(b.symbol));
+    S.symbolsLoaded=true;
+    S.allSymbols.forEach(d=>{if(!S.names[d.symbol])S.names[d.symbol]=d.description||d.symbol;});
+    if(badge) badge.textContent=`${S.allSymbols.length.toLocaleString()} US stocks available`;
+  } else {
+    S.allSymbols=Object.keys(META).map(sym=>({symbol:sym,description:META[sym].n}));
+    S.symbolsLoaded=true;
+    if(badge) badge.textContent=`${S.allSymbols.length} stocks (offline)`;
+  }
+}
+
+function runSearch(q){
+  if(!q){visibleTickers=[...CURATED];renderGrid(visibleTickers);return;}
+  const ql=q.toLowerCase();
+  let res;
+  if(S.symbolsLoaded&&S.allSymbols.length>50){
+    res=S.allSymbols.filter(d=>d.symbol.toLowerCase().includes(ql)||(d.description||'').toLowerCase().includes(ql)).slice(0,80).map(d=>d.symbol);
+  } else {
+    res=Object.keys(META).filter(t=>t.toLowerCase().includes(ql)||(S.names[t]||'').toLowerCase().includes(ql)||(S.sectors[t]||'').toLowerCase().includes(ql));
+  }
+  visibleTickers=[...new Set([...S.selected,...res])];
+  renderGrid(visibleTickers);
+}
+
+function renderGrid(tickers){
+  const grid=$('stockGrid'); grid.innerHTML='';
+  tickers.forEach(ticker=>{
+    const sel=S.selected.includes(ticker);
+    const price=S.prices[ticker], risk=S.risks[ticker];
+    const name=S.names[ticker]||ticker, sector=S.sectors[ticker]||'–';
+    // Show "loading" placeholder when data not yet fetched
+    const priceHtml = price
+      ? `<span class="text-xs font-semibold price-live shrink-0">$${fmt(price)}</span>`
+      : `<span class="text-xs font-semibold price-loading shrink-0">…</span>`;
+    const riskHtml = risk
+      ? `<span class="rbadge ${riskCls(risk)} shrink-0">${risk}</span>`
+      : `<span class="rbadge r-unk shrink-0" style="opacity:.5;font-style:italic;">…</span>`;
+    const card=document.createElement('div');
+    card.className=`scard${sel?' sel':''}`;
+    card.dataset.ticker=ticker;
+    card.innerHTML=`
+      <span class="chk">✓</span>
+      <div class="flex items-start justify-between mb-1.5 gap-1">
+        <span class="text-sm font-bold text-white leading-tight">${ticker}</span>
+        ${riskHtml}
+      </div>
+      <p class="text-xs text-slate-400 leading-tight mb-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${name}</p>
+      <div class="flex items-center justify-between gap-1">
+        <span class="text-xs text-slate-500 truncate">${sector}</span>
+        ${priceHtml}
+      </div>`;
+    card.onclick=()=>toggleStock(ticker,card);
+    grid.appendChild(card);
+  });
+}
+
+function toggleStock(ticker,cardEl){
+  if(S.selected.includes(ticker)){
+    S.selected=S.selected.filter(t=>t!==ticker);
+    delete S.allocations[ticker]; cardEl.classList.remove('sel');
+  } else {
+    S.selected.push(ticker); cardEl.classList.add('sel');
+    // Lazy-fetch price + beta if not already cached
+    if(!S.prices[ticker]){
+      (async()=>{
+        const p = await getQuote(ticker);
+        if(p != null){
+          S.prices[ticker] = p;                        // live price
+        } else {
+          S.prices[ticker] = FALLBACK[ticker] ?? null; // hardcoded fallback
+        }
+        // Risk: use static if available, otherwise try beta
+        if(!S.risks[ticker]){
+          const b = await getBeta(ticker);
+          if(b!=null){ S.betas[ticker]=b; S.risks[ticker]=betaToRisk(b); }
+        }
+        patchCard(ticker);
+        buildAllocPanel();
+      })();
+    }
+  }
+  updateSelCount(); buildAllocPanel();
+}
+
+function updateSelCount(){
+  $('selCount').textContent=S.selected.length;
+  $('btn2next').disabled=S.selected.length===0;
+}
+
+function buildAllocPanel(){
+  const panel=$('allocPanel');
+  if(!S.selected.length){panel.innerHTML='<p class="text-slate-500 text-sm text-center py-4">Select stocks above to set allocations.</p>';return;}
+  let html='<div class="space-y-3">';
+  S.selected.forEach(ticker=>{
+    const pct=S.allocations[ticker]||0, risk=S.risks[ticker], price=S.prices[ticker];
+    html+=`
+    <div class="glass-light p-3">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-sm font-bold text-white w-14 shrink-0">${ticker}</span>
+        <span class="rbadge ${riskCls(risk)}">${risk||'–'}</span>
+        ${price?`<span class="text-xs text-slate-400 ml-auto">$${fmt(price)}</span>`:''}
+      </div>
+      <div class="flex items-center gap-3">
+        <input type="range" min="0" max="100" step="1" value="${pct}"
+          oninput="updateAlloc('${ticker}',this.value)" class="flex-1" />
+        <div class="flex items-center gap-1 shrink-0 w-20">
+          <input id="pi_${ticker}" type="number" min="0" max="100" step="1" value="${pct}"
+            oninput="updateAlloc('${ticker}',this.value)" class="finput finput-sm text-center w-full" />
+          <span class="text-slate-400 text-sm">%</span>
+        </div>
+      </div>
+    </div>`;
+  });
+  html+='</div>'; panel.innerHTML=html;
+  updatePctBar();
+}
+
+function updateAlloc(ticker,val){
+  S.allocations[ticker]=parseFloat(val)||0;
+  const ni=$(`pi_${ticker}`);
+  if(ni&&document.activeElement!==ni) ni.value=S.allocations[ticker];
+  document.querySelectorAll(`[oninput="updateAlloc('${ticker}',this.value)"]`).forEach(el=>{
+    if(document.activeElement!==el) el.value=S.allocations[ticker];
+  });
+  updatePctBar();
+}
+
+function updatePctBar(){
+  const total=Object.values(S.allocations).reduce((s,v)=>s+v,0);
+  const fill=$('pctFill'),label=$('pctLabel'),rem=$('pctRem');
+  fill.style.width=Math.min(total,100)+'%';
+  fill.style.background=total>100?'#f43f5e':total===100?'#10b981':'#f59e0b';
+  label.textContent=fmt(total,1)+'% allocated';
+  label.className=`text-sm font-medium ${total>100?'text-rose-400':total===100?'text-emerald-400':'text-amber-400'}`;
+  rem.textContent=total>100?`⚠ Over by ${fmt(total-100,1)}%`:total===100?'✓ Perfectly balanced!':`${fmt(100-total,1)}% remaining`;
+}
+
+// =================================================================
+//  STEP 3 — RESULTS
+// =================================================================
+async function proceedToResults(){
+  const total=Object.values(S.allocations).reduce((s,v)=>s+v,0);
+  if(Math.abs(total-100)>0.01){showToast(`Allocations must sum to 100% (currently ${fmt(total,1)}%).`,'error');return;}
+  const btn=$('btn2next'); btn.disabled=true; btn.textContent='⟳ Fetching live data…';
+  const missing=S.selected.filter(t=>!S.prices[t]||!S.risks[t]);
+  if(missing.length) await enrichTickers(missing);
+  S.selected.forEach(t=>{if(!S.prices[t])S.prices[t]=FALLBACK[t]??null;});
+  btn.disabled=false; btn.textContent='Build My Portfolio →';
+  goTo(3); renderResults();
+}
+
+function renderResults(){
+  const {totalAmount:TA,selected,allocations,prices,risks,names,sectors}=S;
+  const rows=selected.map(ticker=>{
+    const pct=allocations[ticker]||0, dollars=(pct/100)*TA;
+    const price=prices[ticker]||0, shares=price>0?Math.floor(dollars/price):0;
+    const cost=shares*price, cashBack=dollars-cost;
+    return{ticker,name:names[ticker]||ticker,sector:sectors[ticker]||'–',
+           risk:risks[ticker]||null,beta:S.betas[ticker],pct,dollars,price,shares,cost,cashBack};
+  });
+  const totalCost=rows.reduce((s,r)=>s+r.cost,0), leftover=TA-totalCost;
+  const avgRisk=(()=>{
+    const rm={Low:1,Med:2,High:3},known=rows.filter(r=>r.risk);
+    if(!known.length) return{label:'–',cls:'r-unk'};
+    const w=known.reduce((s,r)=>s+rm[r.risk]*(r.pct/100),0);
+    if(w<=1.5)return{label:'Low',cls:'r-Low'};if(w<=2.2)return{label:'Med',cls:'r-Med'};
+    return{label:'High',cls:'r-High'};
+  })();
+  S.portfolioResult={rows,totalCost,leftover,avgRisk};
+
+  updateFetchBadge();
+  $('rBudget').textContent=`$${fmt(TA)}`;
+  $('rCost').textContent=`$${fmt(totalCost)}`;
+  $('rLeft').textContent=`$${fmt(leftover)}`;
+  const rr=$('rRisk'); rr.textContent=avgRisk.label;
+  rr.className=`text-2xl font-bold ${avgRisk.cls==='r-Low'?'text-emerald-400':avgRisk.cls==='r-Med'?'text-amber-400':'text-rose-400'}`;
+  $('rStocks').textContent=selected.length;
+
+  $('resTbody').innerHTML=rows.map(r=>`
+    <tr>
+      <td><div class="font-bold text-white text-sm">${r.ticker}</div>
+          <div class="text-xs text-slate-400" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</div></td>
+      <td class="text-xs text-slate-400">${r.sector}</td>
+      <td><span class="rbadge ${riskCls(r.risk)}">${r.risk||'–'}</span>
+          ${r.beta!=null?`<div class="text-xs text-slate-500 mt-0.5">β ${fmt(r.beta,2)}</div>`:''}</td>
+      <td class="text-right font-medium text-emerald-400">$${fmt(r.price)}</td>
+      <td class="text-right text-slate-200">${fmt(r.pct,1)}%</td>
+      <td class="text-right text-slate-200">$${fmt(r.dollars)}</td>
+      <td class="text-right font-semibold text-white">${r.shares}</td>
+      <td class="text-right text-slate-200">$${fmt(r.cost)}</td>
+      <td class="text-right text-amber-400 text-xs">$${fmt(r.cashBack)}</td>
+    </tr>`).join('');
+  renderCharts(rows);
+}
+
+// =================================================================
+//  CHARTS
+// =================================================================
+let cRisk=null,cSec=null;
+function renderCharts(rows){
+  if(cRisk){cRisk.destroy();cRisk=null;} if(cSec){cSec.destroy();cSec=null;}
+  const mk=(id,labels,data,colors)=>new Chart($(id),{type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#0b1220',hoverOffset:7}]},
+    options:{cutout:'62%',plugins:{
+      legend:{position:'bottom',labels:{color:'#94a3b8',font:{family:'DM Sans',size:11},padding:10,boxWidth:10}},
+      tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmt(ctx.raw,1)}%`}}}}});
+  const rv={Low:0,Med:0,High:0};
+  rows.forEach(r=>{if(r.risk)rv[r.risk]=(rv[r.risk]||0)+r.pct;});
+  const rl=Object.keys(rv).filter(k=>rv[k]>0);
+  cRisk=mk('chartRisk',rl,rl.map(k=>rv[k]),rl.map(riskHex));
+  const sv={};
+  rows.forEach(r=>{sv[r.sector]=(sv[r.sector]||0)+r.pct;});
+  const sl=Object.keys(sv);
+  cSec=mk('chartSec',sl,sl.map(k=>sv[k]),sl.map(secClr));
+}
+
+// =================================================================
+//  SAVE / EXPORT / LOAD / RESET
+// =================================================================
+function exportCSV(){
+  if(!S.portfolioResult) return;
+  const h=['Ticker','Name','Sector','Risk','Beta','Price','Alloc%','AllocDollars','Shares','TotalCost','CashBack'];
+  const b=S.portfolioResult.rows.map(r=>[r.ticker,`"${r.name}"`,r.sector,r.risk||'',
+    r.beta!=null?fmt(r.beta,2):'',fmt(r.price),fmt(r.pct,1),fmt(r.dollars),r.shares,fmt(r.cost),fmt(r.cashBack)].join(','));
+  const blob=new Blob([[h.join(','),...b].join('\n')],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='beginvest_portfolio.csv';a.click();
+  URL.revokeObjectURL(url);
+  showToast('Exported to CSV!','success');
+}
+function savePortfolio(){
+  localStorage.setItem('beginvest_v3',JSON.stringify({
+    savedAt:new Date().toISOString(),totalAmount:S.totalAmount,
+    selected:S.selected,allocations:S.allocations,prices:S.prices,betas:S.betas,risks:S.risks
+  }));
+  showToast('Portfolio saved!','success');
+}
+function loadPortfolio(){
+  const raw=localStorage.getItem('beginvest_v3');
+  if(!raw){showToast('No saved portfolio found.','info');return;}
+  const p=JSON.parse(raw);
+  Object.assign(S,{totalAmount:p.totalAmount,selected:p.selected,allocations:p.allocations,
+    prices:p.prices||{},betas:p.betas||{},risks:p.risks||{}});
+  $('investAmt').value=p.totalAmount;
+  showToast(`Loaded portfolio from ${new Date(p.savedAt).toLocaleDateString()}`,'success');
+}
+function resetApp(){
+  if(!confirm('Reset everything?')) return;
+  Object.assign(S,{step:1,totalAmount:0,selected:[],allocations:{},prices:{},betas:{},risks:{},
+    pricesSource:'none',portfolioResult:null,fetchMethod:'unknown'});
+  $('investAmt').value='';
+  if(cRisk){cRisk.destroy();cRisk=null;} if(cSec){cSec.destroy();cSec=null;}
+  goTo(1); showToast('Portfolio reset.','info');
+}
+
+// =================================================================
+//  BOOT
+// =================================================================
+document.addEventListener('DOMContentLoaded',()=>{
+  goTo(1); initStep1();
+  $('btn3back').onclick=()=>goTo(2);
+  $('exportBtn').onclick=exportCSV;
+  $('saveBtn').onclick=savePortfolio;
+  $('loadBtn').onclick=loadPortfolio;
+  $('resetBtn').onclick=resetApp;
+
+  // Show file:// warning banner if needed
+  if(IS_FILE_PROTOCOL) {
+    $('serverBanner').classList.add('show');
+  }
+});
+</script>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ================================================================
+     FILE:// WARNING BANNER
+     Only shown when the HTML is opened directly (not via http server)
+     ================================================================ -->
+<div id="serverBanner" class="w-full px-4 py-3 text-center text-sm" style="background:rgba(245,158,11,0.12);border-bottom:1px solid rgba(245,158,11,0.3);">
+  <span class="text-amber-300">
+    ⚡ <strong>Live data notice:</strong> You opened this file directly (file://). 
+    The app will use CORS proxy fallbacks to fetch Finnhub data.
+    For fastest, most reliable data: serve locally with
+    <code class="bg-slate-800 px-1.5 py-0.5 rounded text-xs font-mono text-emerald-300">python3 -m http.server 8080</code>
+    then open <code class="bg-slate-800 px-1.5 py-0.5 rounded text-xs font-mono text-emerald-300">http://localhost:8080/beginvest.html</code>
+  </span>
+</div>
+
+<!-- ================================================================
+     HEADER
+     ================================================================ -->
+<header class="sticky top-0 z-50" style="background:rgba(11,18,32,.92);backdrop-filter:blur(16px);border-bottom:1px solid rgba(148,163,184,.1);">
+  <div class="max-w-5xl mx-auto px-5 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#059669,#0d9488);">
+        <span style="font-family:'DM Serif Display',serif;color:#fff;font-size:1.2rem;font-weight:700;line-height:1;">B</span>
+      </div>
+      <div>
+        <h1 style="font-family:'DM Serif Display',serif;font-size:1.15rem;color:#fff;line-height:1;">Beginvest</h1>
+        <p class="text-xs text-slate-500" style="margin-top:2px;">Beginner Portfolio Builder</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap justify-end">
+      <span id="symBadge" class="text-xs text-slate-500 hidden sm:block"></span>
+      <button id="loadBtn"  class="btn-ghost">Load Saved</button>
+      <button id="resetBtn" class="btn-ghost danger">Reset</button>
+    </div>
+  </div>
+</header>
+
+<!-- ================================================================
+     MAIN
+     ================================================================ -->
+<main class="max-w-5xl mx-auto px-4 py-8">
+
+  <!-- STEPPER -->
+  <div class="flex items-center justify-center mb-10 gap-0">
+    <div class="flex flex-col items-center gap-1.5 w-24">
+      <div id="sdot1" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300"></div>
+      <span id="slbl1" class="text-xs font-medium text-center leading-tight">Investment<br>Amount</span>
+    </div>
+    <div id="sline1" class="step-line"></div>
+    <div class="flex flex-col items-center gap-1.5 w-24">
+      <div id="sdot2" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300"></div>
+      <span id="slbl2" class="text-xs font-medium text-center leading-tight">Choose<br>Stocks</span>
+    </div>
+    <div id="sline2" class="step-line"></div>
+    <div class="flex flex-col items-center gap-1.5 w-24">
+      <div id="sdot3" class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300"></div>
+      <span id="slbl3" class="text-xs font-medium text-center leading-tight">Portfolio<br>Results</span>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       STEP 1
+       ================================================================ -->
+  <div id="sec1" class="section">
+    <div class="glass p-7 md:p-9 max-w-2xl mx-auto">
+      <h2 style="font-family:'DM Serif Display',serif;font-size:1.8rem;color:#fff;margin-bottom:4px;">How much to invest?</h2>
+      <p class="text-slate-400 text-sm mb-7">Enter your total budget. We'll fetch live prices from Finnhub and calculate your exact share breakdown.</p>
+
+      <div class="mb-6">
+        <label class="block text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Investment Amount (USD)</label>
+        <div class="relative">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg font-semibold">$</span>
+          <input id="investAmt" type="number" min="1" step="any" placeholder="1,000" class="finput pl-9 text-xl font-semibold" />
+        </div>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <span class="text-xs text-slate-500 self-center">Quick:</span>
+          <button data-q="500"   class="btn-ghost" style="font-size:12px;padding:5px 11px;">$500</button>
+          <button data-q="1000"  class="btn-ghost" style="font-size:12px;padding:5px 11px;">$1,000</button>
+          <button data-q="2500"  class="btn-ghost" style="font-size:12px;padding:5px 11px;">$2,500</button>
+          <button data-q="5000"  class="btn-ghost" style="font-size:12px;padding:5px 11px;">$5,000</button>
+          <button data-q="10000" class="btn-ghost" style="font-size:12px;padding:5px 11px;">$10,000</button>
+          <button data-q="25000" class="btn-ghost" style="font-size:12px;padding:5px 11px;">$25,000</button>
+        </div>
+      </div>
+
+      <!-- How data is fetched -->
+      <div class="mb-5 p-4 rounded-xl space-y-2.5" style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);">
+        <p class="text-sm font-semibold text-emerald-300">📡 How live data is fetched</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+          <div class="glass-light p-2.5 text-center">
+            <div class="text-emerald-400 font-bold mb-0.5">Strategy 1</div>
+            <div class="text-slate-400">Direct Finnhub API<br><span class="text-slate-500">(http:// server)</span></div>
+          </div>
+          <div class="glass-light p-2.5 text-center">
+            <div class="text-sky-400 font-bold mb-0.5">Strategy 2</div>
+            <div class="text-slate-400">allorigins proxy<br><span class="text-slate-500">(file:// fallback)</span></div>
+          </div>
+          <div class="glass-light p-2.5 text-center">
+            <div class="text-amber-400 font-bold mb-0.5">Strategy 3</div>
+            <div class="text-slate-400">Hardcoded prices<br><span class="text-slate-500">(always works)</span></div>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400">
+          Risk ratings use <strong class="text-slate-300">52-week beta</strong> from Finnhub metrics
+          (Morningstar methodology: β&lt;0.8=Low, β 0.8–1.3=Med, β&gt;1.3=High).
+        </p>
+      </div>
+
+      <div class="mb-7 p-4 rounded-xl" style="background:rgba(56,189,248,.05);border:1px solid rgba(56,189,248,.15);">
+        <p class="text-sm text-sky-300">💡 <strong>Beginner tip:</strong> Start with money you're comfortable not touching for 3–5 years. Many beginners start with $500–$2,000.</p>
+      </div>
+
+      <button id="btn1next" class="btn-primary w-full text-base">Choose My Stocks →</button>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       STEP 2
+       ================================================================ -->
+  <div id="sec2" class="section">
+
+    <div class="glass p-5 md:p-6 mb-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 style="font-family:'DM Serif Display',serif;font-size:1.5rem;color:#fff;margin-bottom:2px;">Pick Your Stocks &amp; ETFs</h2>
+          <p class="text-xs text-slate-400">Prices &amp; risk ratings pre-loaded. Tap cards to select.</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 flex-wrap">
+          <button id="refreshBtn" class="btn-ghost success">⟳ Refresh Prices</button>
+          <span class="glass-light px-3 py-1.5 text-sm text-emerald-400 font-semibold">
+            <span id="selCount">0</span> selected
+          </span>
+        </div>
+      </div>
+
+      <input id="stockSearch" type="text"
+        placeholder="Search any US stock or ETF by ticker, name, or sector…"
+        class="finput mb-4 text-sm" />
+
+      <div class="flex gap-3 mb-4 flex-wrap items-center text-xs">
+        <span class="text-slate-500 shrink-0">Beta risk rating:</span>
+        <span class="rbadge r-Low">Low β&lt;0.8</span>
+        <span class="rbadge r-Med">Med β 0.8–1.3</span>
+        <span class="rbadge r-High">High β&gt;1.3</span>
+        <span class="text-slate-500">· Morningstar methodology · pre-loaded on page open</span>
+      </div>
+
+      <div id="stockGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5"></div>
+    </div>
+
+    <div class="glass p-5 md:p-6 mb-5">
+      <div class="mb-4">
+        <h2 style="font-family:'DM Serif Display',serif;font-size:1.4rem;color:#fff;margin-bottom:2px;">Set Allocation %</h2>
+        <p class="text-xs text-slate-400 mb-3">Must total exactly 100%. Pick a strategy or set manually.</p>
+        <!-- Strategy buttons -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <button id="stratConservative" onclick="applyStrategy('conservative')"
+            class="strat-btn p-3 rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/12 transition-all text-left group">
+            <div class="text-emerald-400 font-bold text-sm mb-0.5">🛡 Conservative</div>
+            <div class="text-xs text-slate-400 leading-tight">More Low, less High</div>
+            <div class="text-xs text-emerald-500/70 mt-1">Low 60% · Med 30% · High 10%</div>
+          </button>
+          <button id="stratModerate" onclick="applyStrategy('moderate')"
+            class="strat-btn p-3 rounded-xl border-2 border-sky-500/30 bg-sky-500/5 hover:bg-sky-500/12 transition-all text-left group">
+            <div class="text-sky-400 font-bold text-sm mb-0.5">⚖ Moderate</div>
+            <div class="text-xs text-slate-400 leading-tight">Balanced across risk</div>
+            <div class="text-xs text-sky-500/70 mt-1">Low 34% · Med 33% · High 33%</div>
+          </button>
+          <button id="stratAggressive" onclick="applyStrategy('aggressive')"
+            class="strat-btn p-3 rounded-xl border-2 border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/12 transition-all text-left group">
+            <div class="text-rose-400 font-bold text-sm mb-0.5">🚀 Aggressive</div>
+            <div class="text-xs text-slate-400 leading-tight">More High, less Low</div>
+            <div class="text-xs text-rose-500/70 mt-1">Low 10% · Med 30% · High 60%</div>
+          </button>
+          <button id="equalSplit" onclick="applyStrategy('equal')"
+            class="strat-btn p-3 rounded-xl border-2 border-slate-500/30 bg-slate-500/5 hover:bg-slate-500/12 transition-all text-left group">
+            <div class="text-slate-300 font-bold text-sm mb-0.5">⚡ Equal Split</div>
+            <div class="text-xs text-slate-400 leading-tight">Same % to all stocks</div>
+            <div class="text-xs text-slate-500/70 mt-1">100% ÷ # of stocks</div>
+          </button>
+        </div>
+        <p id="stratMsg" class="text-xs text-slate-500 mt-2 min-h-[16px]"></p>
+      </div>
+      <div class="mb-4">
+        <div class="flex justify-between items-center mb-1.5">
+          <span id="pctLabel" class="text-sm font-medium text-amber-400">0% allocated</span>
+          <span id="pctRem"   class="text-xs text-slate-500">100% remaining</span>
+        </div>
+        <div class="pbar-track"><div id="pctFill" class="pbar-fill" style="width:0%;background:#f59e0b;"></div></div>
+      </div>
+      <div id="allocPanel">
+        <p class="text-slate-500 text-sm text-center py-4">Select stocks above to set allocations.</p>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between">
+      <button id="btn2back" class="btn-sec">← Back</button>
+      <button id="btn2next" class="btn-primary" disabled>Build My Portfolio →</button>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       STEP 3
+       ================================================================ -->
+  <div id="sec3" class="section">
+
+    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-4">
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="fetchBadge" class="text-xs text-slate-400"></span>
+          <span id="fetchMethod" class="text-xs text-slate-600"></span>
+        </div>
+        <p class="text-xs text-slate-500 mt-1">
+          Risk: <span class="rbadge r-Low">Low</span> β&lt;0.8 &nbsp;
+          <span class="rbadge r-Med">Med</span> β 0.8–1.3 &nbsp;
+          <span class="rbadge r-High">High</span> β&gt;1.3 — Morningstar / Brown Advisory
+        </p>
+      </div>
+      <button id="btn3back" class="btn-ghost shrink-0">← Edit Portfolio</button>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      <div class="metric" style="--mc:#10b981;">
+        <p class="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide">Total Budget</p>
+        <p id="rBudget" class="text-2xl font-bold text-white">–</p>
+      </div>
+      <div class="metric" style="--mc:#38bdf8;">
+        <p class="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide">Amount Invested</p>
+        <p id="rCost" class="text-2xl font-bold text-white">–</p>
+      </div>
+      <div class="metric" style="--mc:#f59e0b;">
+        <p class="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide flex items-center gap-1">Leftover Cash
+          <span class="tip"><span class="text-slate-500 border border-slate-600 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center text-xs">?</span>
+          <span class="tipbox">Because you can only buy whole shares, small amounts stay as cash in your brokerage account.</span></span>
+        </p>
+        <p id="rLeft" class="text-2xl font-bold text-amber-400">–</p>
+      </div>
+      <div class="metric" style="--mc:#e879f9;">
+        <p class="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide flex items-center gap-1">Portfolio Risk
+          <span class="tip"><span class="text-slate-500 border border-slate-600 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center text-xs">?</span>
+          <span class="tipbox">Weighted-average beta-based risk. Based on 52-week beta (Morningstar methodology).</span></span>
+        </p>
+        <p id="rRisk" class="text-2xl font-bold">–</p>
+        <p class="text-xs text-slate-500 mt-0.5"><span id="rStocks">–</span> stocks</p>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="glass mb-5 overflow-hidden">
+      <div class="px-5 pt-5 pb-3" style="border-bottom:1px solid rgba(148,163,184,.08);">
+        <h2 style="font-family:'DM Serif Display',serif;font-size:1.3rem;color:#fff;">Portfolio Breakdown</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Shares rounded to whole numbers · Risk from Finnhub 52-week beta</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="ptable w-full">
+          <thead><tr>
+            <th class="text-left">Stock</th>
+            <th class="text-left">Sector</th>
+            <th class="text-left">Risk / Beta</th>
+            <th class="text-right">Live Price</th>
+            <th class="text-right">Alloc %</th>
+            <th class="text-right">$ Allocated</th>
+            <th class="text-right">Shares</th>
+            <th class="text-right">Total Cost</th>
+            <th class="text-right">Cash Back</th>
+          </tr></thead>
+          <tbody id="resTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+      <div class="glass p-5">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:#fff;margin-bottom:14px;">Risk Allocation</h3>
+        <div style="height:250px;position:relative;"><canvas id="chartRisk"></canvas></div>
+      </div>
+      <div class="glass p-5">
+        <h3 style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:#fff;margin-bottom:14px;">Sector Exposure</h3>
+        <div style="height:250px;position:relative;"><canvas id="chartSec"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex flex-wrap gap-3 justify-center mb-5">
+      <button id="exportBtn" class="btn-primary" style="background:linear-gradient(135deg,#0369a1,#0284c7);">↓ Export CSV</button>
+      <button id="saveBtn" class="btn-sec">💾 Save Portfolio</button>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="glass p-4 text-center" style="border-color:rgba(245,158,11,.18);background:rgba(245,158,11,.03);">
+      <p class="text-xs leading-relaxed" style="color:rgba(251,191,36,.75);">
+        ⚠️ <strong>Disclaimer:</strong> Beginvest is for <strong>educational purposes only</strong> and is
+        <strong>not financial advice</strong>. Prices may be delayed. Risk ratings use historical beta and do not
+        predict future performance. Always consult a qualified financial advisor before investing.
+        Investing involves risk, including possible loss of principal.
+      </p>
+    </div>
+  </div>
+</main>
+
+<footer class="text-center py-8 text-xs text-slate-600">
+  Beginvest · Data via <a href="https://finnhub.io" target="_blank" class="hover:text-slate-400 underline">Finnhub API</a>
+  · Risk: <a href="https://awgmain.morningstar.com/webhelp/glossary_definitions/etf/etfview_risk_analysis.htm" target="_blank" class="hover:text-slate-400 underline">Morningstar Beta Methodology</a>
+  · Educational use only
+</footer>
+
+</body>
+</html>
