@@ -794,7 +794,15 @@ async function loadAllSymbolsBackground(){
   const data = await getAllSymbols();
   if(data && data.length>0){
     S.allSymbols = data
-      .filter(d=>d.symbol&&d.description&&!d.symbol.includes('.')&&!d.symbol.includes('-')&&d.symbol.length<=5)
+      .filter(d => {
+        if(!d.symbol || !d.description) return false;
+        // Exclude: OTC pink sheets (5+ chars with no hyphen are often OTCBB)
+        // Keep: standard NYSE/NASDAQ symbols (1-5 chars), including CLASS shares like BRK-A
+        // Exclude: symbols with dots (foreign ordinaries, warrants) e.g. "AAPL.W"
+        if(d.symbol.includes('.')) return false;
+        if(d.symbol.length > 5) return false;
+        return true;
+      })
       .sort((a,b)=>a.symbol.localeCompare(b.symbol));
     S.symbolsLoaded=true;
     S.allSymbols.forEach(d=>{if(!S.names[d.symbol])S.names[d.symbol]=d.description||d.symbol;});
@@ -807,15 +815,47 @@ async function loadAllSymbolsBackground(){
 }
 
 function runSearch(q){
-  if(!q){visibleTickers=[...CURATED];renderGrid(visibleTickers);return;}
-  const ql=q.toLowerCase();
-  let res;
-  if(S.symbolsLoaded&&S.allSymbols.length>50){
-    res=S.allSymbols.filter(d=>d.symbol.toLowerCase().includes(ql)||(d.description||'').toLowerCase().includes(ql)).slice(0,80).map(d=>d.symbol);
-  } else {
-    res=Object.keys(META).filter(t=>t.toLowerCase().includes(ql)||(S.names[t]||'').toLowerCase().includes(ql)||(S.sectors[t]||'').toLowerCase().includes(ql));
+  q = q.trim();
+  if(!q){ visibleTickers=[...CURATED]; renderGrid(visibleTickers); return; }
+
+  const ql = q.toLowerCase().replace(/[^a-z0-9\s]/gi,'');
+
+  // Helper: score a symbol+description match so exact/prefix hits rank first
+  function score(symbol, description){
+    const sl = symbol.toLowerCase();
+    const dl = (description||'').toLowerCase();
+    if(sl === ql)                   return 100; // exact ticker match
+    if(sl.startsWith(ql))          return  90; // ticker prefix
+    if(dl.startsWith(ql))          return  80; // name prefix
+    if(sl.includes(ql))            return  70; // ticker substring
+    if(dl.includes(ql))            return  60; // name substring
+    // word-boundary match inside description
+    if(dl.split(/\s+/).some(w=>w.startsWith(ql))) return 50;
+    return 0;
   }
-  visibleTickers=[...new Set([...S.selected,...res])];
+
+  let candidates = [];
+
+  if(S.symbolsLoaded && S.allSymbols.length > 50){
+    // Search the full Finnhub universe
+    candidates = S.allSymbols
+      .map(d => ({ symbol:d.symbol, description:d.description||d.symbol, s:score(d.symbol, d.description) }))
+      .filter(d => d.s > 0)
+      .sort((a,b) => b.s - a.s || a.symbol.localeCompare(b.symbol))
+      .slice(0, 60)
+      .map(d => d.symbol);
+  } else {
+    // Offline fallback: search META + names map
+    candidates = Object.keys({...META, ...S.names})
+      .map(sym => ({ symbol:sym, description:S.names[sym]||'', s:score(sym, S.names[sym]) }))
+      .filter(d => d.s > 0)
+      .sort((a,b) => b.s - a.s)
+      .map(d => d.symbol);
+  }
+
+  // During an active search: show ONLY matches (clean, focused results)
+  // Selected stocks that happen to match are included via the candidates list naturally
+  visibleTickers = [...new Set(candidates)];
   renderGrid(visibleTickers);
 }
 
@@ -1037,25 +1077,16 @@ function renderResults(){
   $('rStocks').textContent=selected.length;
 
   $('resTbody').innerHTML=rows.map(r=>{
-    // Extra shares bought from leftover pool (shares > floor(dollars/price))
-    const baseShares = r.price > 0 ? Math.floor((r.pct/100*TA) / r.price) : 0;
-    const extraShares = r.shares - baseShares;
-    const sharesHtml = extraShares > 0
-      ? `${r.shares} <span class="text-emerald-400 text-xs" title="${extraShares} extra share(s) bought from leftover cash">+${extraShares}</span>`
-      : `${r.shares}`;
     return `
     <tr>
       <td><div class="font-bold text-white text-sm">${r.ticker}</div>
           <div class="text-xs text-slate-400" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</div></td>
       <td class="text-xs text-slate-400">${r.sector}</td>
-      <td><span class="rbadge ${riskCls(r.risk)}">${r.risk||'–'}</span>
-          ${r.beta!=null?`<div class="text-xs text-slate-500 mt-0.5">β ${fmt(r.beta,2)}</div>`:''}</td>
+      <td><span class="rbadge ${riskCls(r.risk)}">${r.risk||'–'}</span></td>
       <td class="text-right font-medium text-emerald-400">$${fmt(r.price)}</td>
       <td class="text-right text-slate-200">${fmt(r.pct,1)}%</td>
-      <td class="text-right text-slate-200">$${fmt(r.dollars)}</td>
-      <td class="text-right font-semibold text-white">${sharesHtml}</td>
+      <td class="text-right font-semibold text-white">${r.shares}</td>
       <td class="text-right text-slate-200">$${fmt(r.cost)}</td>
-      <td class="text-right ${leftover<1?'text-emerald-400':'text-amber-400'} text-xs">$${fmt(r.cashBack)}</td>
     </tr>`;
   }).join('');
   renderCharts(rows);
@@ -1087,12 +1118,39 @@ function renderCharts(rows){
 // =================================================================
 function exportCSV(){
   if(!S.portfolioResult) return;
-  const h=['Ticker','Name','Sector','Risk','Beta','Price','Alloc%','AllocDollars','Shares','TotalCost','CashBack'];
-  const b=S.portfolioResult.rows.map(r=>[r.ticker,`"${r.name}"`,r.sector,r.risk||'',
-    r.beta!=null?fmt(r.beta,2):'',fmt(r.price),fmt(r.pct,1),fmt(r.dollars),r.shares,fmt(r.cost),fmt(r.cashBack)].join(','));
-  const blob=new Blob([[h.join(','),...b].join('\n')],{type:'text/csv'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download='beginvest_portfolio.csv';a.click();
+  const {rows, totalCost, leftover} = S.portfolioResult;
+
+  // 8 columns: Ticker | Name | Sector | Risk | Price | Alloc% | Shares | Total Cost
+  const cols = ['Ticker','Name','Sector','Risk','Price ($)','Alloc (%)','Shares','Total Cost ($)'];
+
+  const body = rows.map(r => [
+    r.ticker,
+    `"${r.name}"`,
+    `"${r.sector}"`,
+    r.risk || '',
+    fmt(r.price, 2),
+    fmt(r.pct, 1),
+    r.shares,
+    fmt(r.cost, 2)
+  ].join(','));
+
+  // Blank separator then summary — values placed in the last column (col 8)
+  // Pad with empty quoted strings so every row has exactly 8 fields
+  const pad = (label, value) =>
+    `"${label}","","","","","","","${value}"`;
+
+  const footer = [
+    ',,,,,,, ',   // blank divider row (8 commas)
+    pad('TOTAL INVESTED', fmt(totalCost, 2)),
+    pad('LEFTOVER CASH',  fmt(leftover,  2)),
+    pad('TOTAL BUDGET',   fmt(S.totalAmount, 2)),
+  ];
+
+  const csv = [cols.join(','), ...body, ...footer].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'beginvest_portfolio.csv'; a.click();
   URL.revokeObjectURL(url);
   showToast('Exported to CSV!','success');
 }
@@ -1395,20 +1453,18 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="glass mb-5 overflow-hidden">
       <div class="px-5 pt-5 pb-3" style="border-bottom:1px solid rgba(148,163,184,.08);">
         <h2 style="font-family:'DM Serif Display',serif;font-size:1.3rem;color:#fff;">Portfolio Breakdown</h2>
-        <p class="text-xs text-slate-400 mt-0.5">Whole shares only · <span class="text-emerald-400">+N</span> = extra shares bought from pooled leftover cash · Risk from Finnhub 52-week beta</p>
+        <p class="text-xs text-slate-400 mt-0.5">Whole shares only · leftover cash is recycled to purchase additional shares where possible</p>
       </div>
       <div class="overflow-x-auto">
         <table class="ptable w-full">
           <thead><tr>
             <th class="text-left">Stock</th>
             <th class="text-left">Sector</th>
-            <th class="text-left">Risk / Beta</th>
+            <th class="text-left">Risk</th>
             <th class="text-right">Live Price</th>
             <th class="text-right">Alloc %</th>
-            <th class="text-right">$ Allocated</th>
             <th class="text-right">Shares</th>
             <th class="text-right">Total Cost</th>
-            <th class="text-right">Cash Back</th>
           </tr></thead>
           <tbody id="resTbody"></tbody>
         </table>
