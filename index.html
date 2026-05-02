@@ -1123,27 +1123,30 @@ function exportCSV(){
   // 8 columns: Ticker | Name | Sector | Risk | Price | Alloc% | Shares | Total Cost
   const cols = ['Ticker','Name','Sector','Risk','Price ($)','Alloc (%)','Shares','Total Cost ($)'];
 
+  // csvNum: plain decimal number, no thousands separator — safe for CSV
+  const csvNum = (n, d=2) => Number(n).toFixed(d);
+
   const body = rows.map(r => [
     r.ticker,
     `"${r.name}"`,
     `"${r.sector}"`,
     r.risk || '',
-    fmt(r.price, 2),
-    fmt(r.pct, 1),
+    csvNum(r.price, 2),
+    csvNum(r.pct,   1),
     r.shares,
-    fmt(r.cost, 2)
+    csvNum(r.cost,  2)
   ].join(','));
 
-  // Blank separator then summary — values placed in the last column (col 8)
-  // Pad with empty quoted strings so every row has exactly 8 fields
-  const pad = (label, value) =>
-    `"${label}","","","","","","","${value}"`;
+  // Footer: label in col A, value in col H — exactly 7 commas between them
+  // "LABEL",,,,,,,VALUE  →  8 fields: A=label, B-G=empty, H=value
+  const footerRow = (label, value) =>
+    `"${label}",,,,,,,${value}`;
 
   const footer = [
-    ',,,,,,, ',   // blank divider row (8 commas)
-    pad('TOTAL INVESTED', fmt(totalCost, 2)),
-    pad('LEFTOVER CASH',  fmt(leftover,  2)),
-    pad('TOTAL BUDGET',   fmt(S.totalAmount, 2)),
+    ',,,,,,,',  // blank divider — 7 commas = 8 empty fields
+    footerRow('TOTAL INVESTED', csvNum(totalCost,     2)),
+    footerRow('LEFTOVER CASH',  csvNum(leftover,      2)),
+    footerRow('TOTAL BUDGET',   csvNum(S.totalAmount, 2)),
   ];
 
   const csv = [cols.join(','), ...body, ...footer].join('\n');
