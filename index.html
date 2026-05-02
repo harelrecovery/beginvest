@@ -948,14 +948,75 @@ async function proceedToResults(){
 
 function renderResults(){
   const {totalAmount:TA,selected,allocations,prices,risks,names,sectors}=S;
-  const rows=selected.map(ticker=>{
-    const pct=allocations[ticker]||0, dollars=(pct/100)*TA;
-    const price=prices[ticker]||0, shares=price>0?Math.floor(dollars/price):0;
-    const cost=shares*price, cashBack=dollars-cost;
-    return{ticker,name:names[ticker]||ticker,sector:sectors[ticker]||'–',
-           risk:risks[ticker]||null,beta:S.betas[ticker],pct,dollars,price,shares,cost,cashBack};
+
+  // ── PASS 1: baseline — buy as many whole shares as each stock's
+  //   allocation allows (floor division). Track the leftover per row.
+  const rows = selected.map(ticker => {
+    const pct     = allocations[ticker] || 0;
+    const dollars = (pct / 100) * TA;
+    const price   = prices[ticker] || 0;
+    const shares  = price > 0 ? Math.floor(dollars / price) : 0;
+    const cost    = shares * price;
+    return {
+      ticker, name:names[ticker]||ticker, sector:sectors[ticker]||'–',
+      risk:risks[ticker]||null, beta:S.betas[ticker],
+      pct, dollars, price, shares, cost,
+      cashBack: dollars - cost   // per-row leftover (for display only)
+    };
   });
-  const totalCost=rows.reduce((s,r)=>s+r.cost,0), leftover=TA-totalCost;
+
+  // ── PASS 2: greedy cash recycling ───────────────────────────────
+  // The total unspent cash = TA − Σcost. We recycle it by buying
+  // additional whole shares greedily until nothing affordable remains.
+  //
+  // Algorithm:
+  //   1. Sort stocks by their fractional remainder (descending) so the
+  //      stock that was "closest" to one more share gets first priority —
+  //      this keeps allocations near their target percentages.
+  //   2. In a single pass, buy one extra share for every stock we can
+  //      afford from the pool (sorted by fraction, then price).
+  //   3. Repeat until no affordable stock remains (handles cascades
+  //      where buying one cheap share frees up enough for another).
+
+  let pool = TA - rows.reduce((s, r) => s + r.cost, 0);
+
+  // Pre-compute fractional remainder for each row (used for priority)
+  rows.forEach(r => {
+    r._frac = r.price > 0 ? (r.dollars / r.price) % 1 : 0;
+  });
+
+  // Keep looping until no share can be bought with what's left
+  let changed = true;
+  while (changed && pool > 0.001) {
+    changed = false;
+
+    // Each iteration: consider all stocks affordable from pool,
+    // sorted by (frac DESC, price ASC) — closest-to-next-share first,
+    // then cheapest as tiebreaker.
+    const candidates = rows
+      .filter(r => r.price > 0 && r.price <= pool + 0.001)
+      .sort((a, b) => b._frac - a._frac || a.price - b.price);
+
+    for (const r of candidates) {
+      if (r.price <= pool + 0.001) {
+        r.shares  += 1;
+        r.cost     = r.shares * r.price;
+        pool      -= r.price;
+        pool       = Math.round(pool * 10000) / 10000; // avoid float drift
+        r._frac    = 0; // used its fraction, deprioritise next round
+        changed    = true;
+        // Don't break — continue through all affordable candidates this pass
+      }
+    }
+  }
+
+  // ── PASS 3: recompute per-row cashBack from actual costs ─────────
+  // cashBack here means "how much of that stock's dollar slice is unspent"
+  // — for display. True leftover is pool (total unspent).
+  rows.forEach(r => { r.cashBack = Math.max(0, r.dollars - r.cost); });
+
+  const totalCost = rows.reduce((s, r) => s + r.cost, 0);
+  const leftover  = Math.max(0, Math.round((TA - totalCost) * 100) / 100);
   const avgRisk=(()=>{
     const rm={Low:1,Med:2,High:3},known=rows.filter(r=>r.risk);
     if(!known.length) return{label:'–',cls:'r-unk'};
@@ -969,11 +1030,20 @@ function renderResults(){
   $('rBudget').textContent=`$${fmt(TA)}`;
   $('rCost').textContent=`$${fmt(totalCost)}`;
   $('rLeft').textContent=`$${fmt(leftover)}`;
+  // Turn leftover green when it's been minimised to under $1
+  $('rLeft').className=`text-2xl font-bold ${leftover<1?'text-emerald-400':'text-amber-400'}`;
   const rr=$('rRisk'); rr.textContent=avgRisk.label;
   rr.className=`text-2xl font-bold ${avgRisk.cls==='r-Low'?'text-emerald-400':avgRisk.cls==='r-Med'?'text-amber-400':'text-rose-400'}`;
   $('rStocks').textContent=selected.length;
 
-  $('resTbody').innerHTML=rows.map(r=>`
+  $('resTbody').innerHTML=rows.map(r=>{
+    // Extra shares bought from leftover pool (shares > floor(dollars/price))
+    const baseShares = r.price > 0 ? Math.floor((r.pct/100*TA) / r.price) : 0;
+    const extraShares = r.shares - baseShares;
+    const sharesHtml = extraShares > 0
+      ? `${r.shares} <span class="text-emerald-400 text-xs" title="${extraShares} extra share(s) bought from leftover cash">+${extraShares}</span>`
+      : `${r.shares}`;
+    return `
     <tr>
       <td><div class="font-bold text-white text-sm">${r.ticker}</div>
           <div class="text-xs text-slate-400" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</div></td>
@@ -983,10 +1053,11 @@ function renderResults(){
       <td class="text-right font-medium text-emerald-400">$${fmt(r.price)}</td>
       <td class="text-right text-slate-200">${fmt(r.pct,1)}%</td>
       <td class="text-right text-slate-200">$${fmt(r.dollars)}</td>
-      <td class="text-right font-semibold text-white">${r.shares}</td>
+      <td class="text-right font-semibold text-white">${sharesHtml}</td>
       <td class="text-right text-slate-200">$${fmt(r.cost)}</td>
-      <td class="text-right text-amber-400 text-xs">$${fmt(r.cashBack)}</td>
-    </tr>`).join('');
+      <td class="text-right ${leftover<1?'text-emerald-400':'text-amber-400'} text-xs">$${fmt(r.cashBack)}</td>
+    </tr>`;
+  }).join('');
   renderCharts(rows);
 }
 
@@ -1306,7 +1377,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       <div class="metric" style="--mc:#f59e0b;">
         <p class="text-xs text-slate-400 mb-1.5 font-semibold uppercase tracking-wide flex items-center gap-1">Leftover Cash
           <span class="tip"><span class="text-slate-500 border border-slate-600 rounded-full w-3.5 h-3.5 inline-flex items-center justify-center text-xs">?</span>
-          <span class="tipbox">Because you can only buy whole shares, small amounts stay as cash in your brokerage account.</span></span>
+          <span class="tipbox">Leftover after buying whole shares. Extra shares are automatically purchased with any pooled cash to keep this as small as possible.</span></span>
         </p>
         <p id="rLeft" class="text-2xl font-bold text-amber-400">–</p>
       </div>
@@ -1324,7 +1395,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="glass mb-5 overflow-hidden">
       <div class="px-5 pt-5 pb-3" style="border-bottom:1px solid rgba(148,163,184,.08);">
         <h2 style="font-family:'DM Serif Display',serif;font-size:1.3rem;color:#fff;">Portfolio Breakdown</h2>
-        <p class="text-xs text-slate-400 mt-0.5">Shares rounded to whole numbers · Risk from Finnhub 52-week beta</p>
+        <p class="text-xs text-slate-400 mt-0.5">Whole shares only · <span class="text-emerald-400">+N</span> = extra shares bought from pooled leftover cash · Risk from Finnhub 52-week beta</p>
       </div>
       <div class="overflow-x-auto">
         <table class="ptable w-full">
