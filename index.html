@@ -306,7 +306,69 @@ const META = {
   ZTS: {n:"Zoetis Inc.",s:"Healthcare"},
   REGN:{n:"Regeneron Pharmaceuticals",s:"Healthcare"},
   CFLT:{n:"Confluent Inc.",s:"Technology"},
+  // Additional popular ETFs often searched
+  IGV: {n:"iShares Expanded Tech-Software Sector ETF",s:"Technology"},
+  XSW: {n:"SPDR S&P Software & Services ETF",s:"Technology"},
+  VGT: {n:"Vanguard Information Technology ETF",s:"Technology"},
+  SKYY:{n:"First Trust Cloud Computing ETF",s:"Technology"},
+  WCLD:{n:"WisdomTree Cloud Computing ETF",s:"Technology"},
+  CLOU:{n:"Global X Cloud Computing ETF",s:"Technology"},
+  HACK:{n:"ETFMG Prime Cyber Security ETF",s:"Cybersecurity"},
+  CIBR:{n:"First Trust NASDAQ Cybersecurity ETF",s:"Cybersecurity"},
+  ROBO:{n:"ROBO Global Robotics & Automation ETF",s:"Technology"},
+  BOTZ:{n:"Global X Robotics & AI ETF",s:"Technology"},
+  AIQ: {n:"Global X Artificial Intelligence & Tech ETF",s:"Technology"},
+  IRBO:{n:"iRobot Corp / iShares Robotics & AI ETF",s:"Technology"},
+  FINX:{n:"Global X FinTech ETF",s:"Fintech"},
+  LMND:{n:"Lemonade Inc.",s:"Fintech"},
+  NOW: {n:"ServiceNow Inc.",s:"Technology"},
+  VLN: {n:"Valens Semiconductor Ltd.",s:"Semiconductors"},
+  MELI:{n:"MercadoLibre Inc.",s:"Consumer / Tech"},
+  SE:  {n:"Sea Limited ADS",s:"Consumer / Tech"},
+  GRAB:{n:"Grab Holdings Ltd.",s:"Transportation"},
+  DKNG:{n:"DraftKings Inc.",s:"Gaming / Entertainment"},
+  PENN:{n:"PENN Entertainment Inc.",s:"Gaming / Entertainment"},
+  CELH:{n:"Celsius Holdings Inc.",s:"Consumer Staples"},
+  SMCI:{n:"Super Micro Computer Inc.",s:"Technology"},
+  ARM: {n:"Arm Holdings plc ADS",s:"Semiconductors"},
+  AVGO:{n:"Broadcom Inc.",s:"Semiconductors"},
+  MRVL:{n:"Marvell Technology Inc.",s:"Semiconductors"},
+  ON:  {n:"ON Semiconductor Corp.",s:"Semiconductors"},
+  TXN: {n:"Texas Instruments Inc.",s:"Semiconductors"},
+  AMAT:{n:"Applied Materials Inc.",s:"Semiconductors"},
+  LRCX:{n:"Lam Research Corporation",s:"Semiconductors"},
+  KLAC:{n:"KLA Corporation",s:"Semiconductors"},
+  MCHP:{n:"Microchip Technology Inc.",s:"Semiconductors"},
+  SWKS:{n:"Skyworks Solutions Inc.",s:"Semiconductors"},
+  QRVO:{n:"Qorvo Inc.",s:"Semiconductors"},
+  ENPH:{n:"Enphase Energy Inc.",s:"Clean Energy"},
+  SEDG:{n:"SolarEdge Technologies Inc.",s:"Clean Energy"},
+  FSLR:{n:"First Solar Inc.",s:"Clean Energy"},
+  RUN: {n:"Sunrun Inc.",s:"Clean Energy"},
+  PLUG:{n:"Plug Power Inc.",s:"Clean Energy"},
+  BE:  {n:"Bloom Energy Corporation",s:"Clean Energy"},
+  BLNK:{n:"Blink Charging Co.",s:"Clean Energy"},
+  CHPT:{n:"ChargePoint Holdings Inc.",s:"Clean Energy"},
+  HUBS:{n:"HubSpot Inc.",s:"Technology"},
+  CRM: {n:"Salesforce Inc.",s:"Technology"},
+  ADBE:{n:"Adobe Inc.",s:"Technology"},
+  ORCL:{n:"Oracle Corporation",s:"Technology"},
+  SAP: {n:"SAP SE ADS",s:"Technology"},
+  WDAY:{n:"Workday Inc.",s:"Technology"},
+  VEEV:{n:"Veeva Systems Inc.",s:"Healthcare"},
+  DOCU:{n:"DocuSign Inc.",s:"Technology"},
+  TWLO:{n:"Twilio Inc.",s:"Technology"},
+  OKTA:{n:"Okta Inc.",s:"Cybersecurity"},
+  ZS:  {n:"Zscaler Inc.",s:"Cybersecurity"},
+  FTNT:{n:"Fortinet Inc.",s:"Cybersecurity"},
+  S:   {n:"SentinelOne Inc.",s:"Cybersecurity"},
+  BILI:{n:"Bilibili Inc. ADS",s:"Media / Entertainment"},
+  SPOT:{n:"Spotify Technology SA",s:"Media / Entertainment"},
+  TTD: {n:"The Trade Desk Inc.",s:"Technology"},
+  APPS:{n:"Digital Turbine Inc.",s:"Technology"},
+  ACMR:{n:"ACM Research Inc.",s:"Semiconductors"},
 };
+
 
 // =================================================================
 //  STATIC RISK FALLBACKS
@@ -337,6 +399,17 @@ const STATIC_RISK = {
   JD:'High', NVAX:'High', RBLX:'High', SNAP:'High', LYFT:'High',
   REGN:'High', MDB:'High', DDOG:'High', CFLT:'High', ZM:'High',
   SQ:'High', F:'High', GM:'High', GE:'High', INTC:'High',
+  // Extended set
+  IGV:'Med', XSW:'Med', VGT:'Med', SKYY:'High', WCLD:'High', CLOU:'High',
+  HACK:'Med', CIBR:'Med', ROBO:'High', BOTZ:'High', AIQ:'High', FINX:'High',
+  LMND:'High', NOW:'Med', VLN:'High', MELI:'High', SE:'High', GRAB:'High',
+  DKNG:'High', PENN:'High', CELH:'High', SMCI:'High', ARM:'High', AVGO:'Med',
+  MRVL:'High', ON:'Med', TXN:'Low', AMAT:'Med', LRCX:'Med', KLAC:'Med',
+  MCHP:'Med', SWKS:'Med', ENPH:'High', SEDG:'High', FSLR:'High', RUN:'High',
+  PLUG:'High', BE:'High', BLNK:'High', CHPT:'High',
+  HUBS:'High', CRM:'Med', ADBE:'Med', ORCL:'Low', SAP:'Low', WDAY:'High',
+  VEEV:'Med', DOCU:'High', TWLO:'High', OKTA:'High', ZS:'High', FTNT:'Med',
+  S:'High', SPOT:'High', TTD:'High', BILI:'High', ACMR:'High',
 };
 
 const FALLBACK = {
@@ -366,6 +439,7 @@ const SEC_CLR = {
   'Fintech':'#a78bfa','Fintech / Crypto':'#f97316','Media / Entertainment':'#e879f9',
   'Gaming / Metaverse':'#c084fc','Cybersecurity':'#ef4444','Social Media':'#60a5fa',
   'Transportation':'#94a3b8','Travel':'#fbbf24',
+  'ETF':'#60a5fa','Gaming / Entertainment':'#c084fc','–':'#64748b',
 };
 
 // =================================================================
@@ -487,6 +561,20 @@ async function getBeta(ticker) {
   if(!d) return null;
   const b = d?.metric?.beta;
   return (typeof b==='number' && isFinite(b)) ? b : null;
+}
+
+// GET /search?q=QUERY  →  Finnhub server-side symbol search
+// Returns all matching US securities regardless of what's in our local list.
+// This is the most reliable way to find any stock/ETF by ticker or name.
+async function searchSymbols(query) {
+  const url = `${FH_BASE}/search?q=${encodeURIComponent(query)}&token=${FINNHUB_KEY}`;
+  const d = await smartFetch(url);
+  if(!d || !d.result) return [];
+  // Keep only US-listed equities and ETFs, filter out crypto/forex/options
+  return d.result.filter(r =>
+    r.type === 'Common Stock' || r.type === 'ETP' ||
+    r.type === '' || !r.type // some ETFs come back with empty type
+  );
 }
 
 // GET /stock/symbol?exchange=US  →  full symbol list
@@ -814,49 +902,87 @@ async function loadAllSymbolsBackground(){
   }
 }
 
-function runSearch(q){
+// Track the current search query to avoid stale results from slow API calls
+let currentSearchQuery = '';
+
+async function runSearch(q){
   q = q.trim();
   if(!q){ visibleTickers=[...CURATED]; renderGrid(visibleTickers); return; }
+  currentSearchQuery = q;
 
-  const ql = q.toLowerCase().replace(/[^a-z0-9\s]/gi,'');
+  const ql = q.toLowerCase();
 
-  // Helper: score a symbol+description match so exact/prefix hits rank first
+  // ── Step 1: Show instant local results while API call is in-flight ──
+  // Score function: exact ticker first, then prefix, then substring matches
   function score(symbol, description){
     const sl = symbol.toLowerCase();
     const dl = (description||'').toLowerCase();
-    if(sl === ql)                   return 100; // exact ticker match
-    if(sl.startsWith(ql))          return  90; // ticker prefix
-    if(dl.startsWith(ql))          return  80; // name prefix
-    if(sl.includes(ql))            return  70; // ticker substring
-    if(dl.includes(ql))            return  60; // name substring
-    // word-boundary match inside description
-    if(dl.split(/\s+/).some(w=>w.startsWith(ql))) return 50;
+    if(sl === ql)                                        return 100;
+    if(sl.startsWith(ql))                               return  90;
+    if(dl.startsWith(ql))                               return  80;
+    if(sl.includes(ql))                                 return  70;
+    if(dl.includes(ql))                                 return  60;
+    if(dl.split(/\s+/).some(w=>w.startsWith(ql)))       return  50;
     return 0;
   }
 
-  let candidates = [];
+  // Build local candidates from all known symbols + META
+  const localPool = S.symbolsLoaded && S.allSymbols.length > 50
+    ? S.allSymbols
+    : Object.keys({...META,...S.names}).map(sym=>({symbol:sym, description:S.names[sym]||''}));
 
-  if(S.symbolsLoaded && S.allSymbols.length > 50){
-    // Search the full Finnhub universe
-    candidates = S.allSymbols
-      .map(d => ({ symbol:d.symbol, description:d.description||d.symbol, s:score(d.symbol, d.description) }))
-      .filter(d => d.s > 0)
-      .sort((a,b) => b.s - a.s || a.symbol.localeCompare(b.symbol))
-      .slice(0, 60)
-      .map(d => d.symbol);
+  const localMatches = localPool
+    .map(d=>({symbol:d.symbol, description:d.description||S.names[d.symbol]||'', s:score(d.symbol, d.description||S.names[d.symbol]||'')}))
+    .filter(d=>d.s>0)
+    .sort((a,b)=>b.s-a.s||a.symbol.localeCompare(b.symbol))
+    .slice(0,40)
+    .map(d=>d.symbol);
+
+  // Render local matches immediately (instant feedback)
+  if(localMatches.length){
+    visibleTickers = [...new Set(localMatches)];
+    renderGrid(visibleTickers);
   } else {
-    // Offline fallback: search META + names map
-    candidates = Object.keys({...META, ...S.names})
-      .map(sym => ({ symbol:sym, description:S.names[sym]||'', s:score(sym, S.names[sym]) }))
-      .filter(d => d.s > 0)
-      .sort((a,b) => b.s - a.s)
-      .map(d => d.symbol);
+    // Show a loading indicator while we wait for API
+    $('stockGrid').innerHTML = `<div class="col-span-4 text-center py-8 text-slate-400 text-sm">
+      <span class="spin inline-block mr-2">⟳</span> Searching Finnhub for "<strong>${q}</strong>"…
+    </div>`;
   }
 
-  // During an active search: show ONLY matches (clean, focused results)
-  // Selected stocks that happen to match are included via the candidates list naturally
-  visibleTickers = [...new Set(candidates)];
-  renderGrid(visibleTickers);
+  // ── Step 2: Query Finnhub /search for authoritative results ──
+  // This finds ANY US stock/ETF including ones not in our local list
+  try {
+    const apiResults = await searchSymbols(q);
+
+    // Guard: discard if user has since typed something different
+    if(currentSearchQuery !== q) return;
+
+    if(apiResults.length > 0){
+      // Merge API results with local, de-dupe, keep API order (most relevant first)
+      const apiTickers = apiResults.map(r => r.symbol);
+
+      // Store names from API results for any new tickers
+      apiResults.forEach(r => {
+        if(!S.names[r.symbol]) S.names[r.symbol] = r.description || r.symbol;
+        // Infer sector from displaySymbol type hints if possible
+        if(!S.sectors[r.symbol]) S.sectors[r.symbol] = r.type === 'ETP' ? 'ETF' : '–';
+      });
+
+      // Merge: API results first (authoritative), then any extra local matches
+      const merged = [...new Set([...apiTickers, ...localMatches])].slice(0, 60);
+      visibleTickers = merged;
+      renderGrid(visibleTickers);
+    } else if(!localMatches.length){
+      // No results anywhere
+      $('stockGrid').innerHTML = `<div class="col-span-4 text-center py-8 text-slate-400 text-sm">
+        No results found for "<strong>${q}</strong>". Try a different ticker or name.
+      </div>`;
+    }
+    // else: keep local results already shown
+  } catch(e){
+    // API search failed — local results already showing, nothing to do
+    console.warn('Finnhub search failed:', e);
+  }
 }
 
 function renderGrid(tickers){
